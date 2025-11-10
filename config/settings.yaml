@@ -1,0 +1,304 @@
+# Companion Bot Configuration
+# Hardware: Raspberry Pi 4, Mini Microphone, Pi Camera v2
+
+# Audio Configuration - Mini Microphone
+audio:
+  input:
+    device_index: null  # null = default device, or specific index (use test script to find)
+    channels: 1  # Mini mics typically mono
+    sample_rate: 16000  # Good balance for speech recognition
+    chunk_size: 1024  # Audio buffer size
+    format: "int16"  # Audio sample format
+
+  output:
+    device_index: null  # null = default speaker
+    sample_rate: 22050  # TTS output rate
+    channels: 1
+
+  processing:
+    noise_reduction: true
+    auto_gain: true
+    vad_aggressiveness: 2  # Voice Activity Detection: 0-3 (3 = most aggressive)
+    silence_threshold: 500  # Amplitude threshold for silence detection
+    silence_duration: 1.5  # Seconds of silence before stopping recording
+
+  wake_word:
+    enabled: false  # Set to true if using wake word
+    keyword: "hey buddy"
+    sensitivity: 0.5
+
+# Vision Configuration - Pi Camera v2
+vision:
+  camera:
+    resolution: [640, 480]  # [width, height] - Lower for better FPS on Pi
+    framerate: 30
+    rotation: 0  # 0, 90, 180, or 270
+    hflip: false  # Horizontal flip
+    vflip: false  # Vertical flip
+    exposure_mode: "auto"  # auto, night, backlight, spotlight, sports
+    awb_mode: "auto"  # Auto white balance
+
+  processing:
+    face_detection: true
+    face_recognition: true
+    object_tracking: false  # Enable if needed
+    min_detection_confidence: 0.5
+    min_tracking_confidence: 0.5
+
+  face:
+    detection_interval: 0.1  # Seconds between face detection attempts
+    recognition_threshold: 0.6  # Similarity threshold for face recognition
+    unknown_face_threshold: 3  # Frames before marking as unknown person
+
+  performance:
+    use_threading: true
+    max_fps: 30
+    buffer_size: 2
+
+# Sensor Configuration
+sensors:
+  touch:
+    enabled: true
+    pins:
+      head: 17  # GPIO pin numbers (BCM mode)
+      body: 27
+      back: 22
+    debounce_time: 0.05  # Seconds
+    long_press_duration: 2.0  # Seconds for long press detection
+
+  proximity:
+    enabled: true
+    type: "ultrasonic"  # ultrasonic or pir
+    ultrasonic:
+      trigger_pin: 23
+      echo_pin: 24
+      max_distance: 200  # cm
+      detection_threshold: 50  # cm - trigger when closer than this
+    pir:
+      pin: 25
+
+  polling_rate: 20  # Hz - How often to check sensors
+
+# Motor & Servo Configuration
+motors:
+  servo:
+    enabled: true
+    controller: "pigpio"  # pigpio or pca9685
+    frequency: 50  # Hz
+
+    servos:
+      head_pan:
+        pin: 12
+        min_pulse: 500
+        max_pulse: 2500
+        min_angle: -90
+        max_angle: 90
+        neutral: 0
+
+      head_tilt:
+        pin: 13
+        min_pulse: 500
+        max_pulse: 2500
+        min_angle: -45
+        max_angle: 45
+        neutral: 0
+
+      ear_left:
+        pin: 18
+        min_pulse: 500
+        max_pulse: 2500
+        min_angle: 0
+        max_angle: 90
+        neutral: 45
+
+      ear_right:
+        pin: 19
+        min_pulse: 500
+        max_pulse: 2500
+        min_angle: 0
+        max_angle: 90
+        neutral: 45
+
+      tail:
+        pin: 26
+        min_pulse: 500
+        max_pulse: 2500
+        min_angle: -90
+        max_angle: 90
+        neutral: 0
+
+  movement:
+    enabled: true
+    # Lab 3 Robot Kit motor configuration
+    left_motor_pins: [5, 6]  # [forward, backward]
+    right_motor_pins: [16, 20]
+    speed_default: 50  # PWM percentage (0-100)
+
+# Display Configuration - TFT
+display:
+  enabled: true
+  type: "pygame"  # pygame, pillow, or spi
+  resolution: [480, 320]  # TFT resolution
+  fullscreen: false
+  fps: 30
+
+  eyes:
+    animation_speed: 0.05  # Seconds between frames
+    blink_interval: [3, 8]  # Random blink every 3-8 seconds
+    idle_movement: true
+    idle_movement_interval: [2, 5]  # Random eye movement
+
+  colors:
+    background: [0, 0, 0]  # RGB
+    eye_color: [100, 200, 255]  # Light blue
+    pupil_color: [0, 0, 0]
+
+# Personality Engine
+personality:
+  default_state: "curious"
+
+  emotions:
+    - happy
+    - sad
+    - excited
+    - curious
+    - sleepy
+    - lonely
+    - playful
+    - scared
+    - angry
+    - loving
+    - bored
+    - surprised
+
+  traits:
+    energy_level: 0.7  # 0-1, affects how active the bot is
+    sociability: 0.8  # 0-1, how much it seeks interaction
+    curiosity: 0.9  # 0-1, how much it explores
+    affection: 0.8  # 0-1, how lovey it is
+    playfulness: 0.7  # 0-1, how playful
+
+  dynamics:
+    emotion_decay_rate: 0.01  # How fast emotions fade per second
+    loneliness_increase_rate: 0.005  # Increase when no interaction
+    energy_drain_rate: 0.003  # Energy drains over time
+    touch_happiness_boost: 0.2
+    voice_interaction_boost: 0.3
+    face_recognition_boost: 0.15
+
+  circadian:
+    enabled: true
+    wake_hour: 7  # Hour of day (0-23)
+    sleep_hour: 22
+    energy_multiplier_awake: 1.0
+    energy_multiplier_sleepy: 0.3
+
+# LLM Configuration - Ollama
+llm:
+  provider: "ollama"  # ollama, openai, anthropic
+
+  ollama:
+    base_url: "http://localhost:11434"
+    model: "llama3.2:3b"  # Lightweight model for Pi
+    timeout: 30  # Seconds
+
+  generation:
+    temperature: 0.8  # 0-1, higher = more creative
+    max_tokens: 150  # Keep responses short for pet character
+    top_p: 0.9
+
+  personality_prompt: |
+    You are a cute, affectionate pet companion robot. You communicate like a friendly pet who loves its owner.
+    Keep responses SHORT (1-2 sentences max). Use simple, warm language.
+    Express emotions clearly. Be playful, curious, and loving.
+    Current emotion: {emotion}
+    Current energy: {energy}
+    User name: {user_name}
+
+  fallback_responses:
+    - "Woof! I'm here for you!"
+    - "Meow! Pet me!"
+    - "*happy noises*"
+    - "I love spending time with you!"
+    - "*curious head tilt*"
+
+# Speech Recognition
+speech:
+  stt:
+    provider: "whisper"  # whisper, google, vosk
+    language: "en"
+
+    whisper:
+      model_size: "base"  # tiny, base, small (base is good for Pi)
+      device: "cpu"
+
+    vosk:
+      model_path: "models/vosk-model-small-en-us-0.15"
+
+  tts:
+    provider: "pyttsx3"  # pyttsx3, gtts
+
+    pyttsx3:
+      rate: 150  # Words per minute
+      volume: 0.9  # 0-1
+      voice_id: 0  # Voice index (use test script to find)
+      pitch: 1.5  # Higher pitch for cute pet voice
+
+    gtts:
+      language: "en"
+      tld: "com"  # .com, .co.uk, etc.
+      slow: false
+
+# Memory System
+memory:
+  enabled: true
+  database_path: "data/companion.db"
+
+  user_profiles:
+    max_users: 10
+    face_encoding_model: "hog"  # hog or cnn (cnn is more accurate but slower)
+
+  conversation:
+    max_history: 50  # Number of exchanges to remember
+    context_window: 10  # Recent exchanges to send to LLM
+
+  learning:
+    track_preferences: true
+    track_interactions: true
+    track_routines: true
+
+  cleanup:
+    auto_cleanup: true
+    max_age_days: 90  # Delete data older than this
+
+# System Configuration
+system:
+  log_level: "INFO"  # DEBUG, INFO, WARNING, ERROR
+  log_file: "data/logs/companion.log"
+
+  performance:
+    main_loop_rate: 10  # Hz - Main control loop frequency
+    max_cpu_percent: 80  # Warning threshold
+    max_memory_mb: 2048  # Warning threshold
+
+  threading:
+    camera_thread: true
+    audio_thread: true
+    sensor_thread: true
+    expression_thread: true
+
+  startup:
+    play_startup_sound: true
+    show_startup_animation: true
+    camera_warmup_time: 2.0  # Seconds
+
+  shutdown:
+    graceful_timeout: 5  # Seconds to wait for threads to stop
+
+# Development & Testing
+development:
+  debug_mode: false
+  mock_hardware: false  # Use simulated hardware for testing without Pi
+  show_fps: false
+  show_sensor_values: false
+  save_debug_images: false

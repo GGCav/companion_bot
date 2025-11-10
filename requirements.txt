@@ -1,0 +1,78 @@
+# Companion Bot Requirements
+# Optimized for Raspberry Pi 4 with Mini Microphone and Pi Camera v2
+
+# Core Python
+python-dotenv==1.0.0
+
+# LLM Integration
+ollama==0.3.3
+requests==2.31.0
+
+# Audio Processing - Mini Microphone Support
+pyaudio==0.2.14
+sounddevice==0.4.6
+numpy==1.24.3
+scipy==1.11.4
+webrtcvad==2.0.10  # Voice activity detection
+
+# Speech-to-Text (Choose one or multiple)
+openai-whisper==20231117  # Local Whisper model
+SpeechRecognition==3.10.0  # Google/other cloud STT
+vosk==0.3.45  # Lightweight offline STT
+
+# Text-to-Speech
+pyttsx3==2.90
+gTTS==2.5.1
+pygame==2.5.2  # For audio playback
+
+# Computer Vision - Pi Camera v2 Optimized
+opencv-python==4.8.1.78
+opencv-contrib-python==4.8.1.78
+picamera2==0.3.17  # Official Pi Camera library
+mediapipe==0.10.9  # Face detection & tracking
+Pillow==10.2.0
+imutils==0.5.4
+
+# GPIO & Hardware Control
+RPi.GPIO==0.7.1
+pigpio==1.78  # Advanced servo control
+adafruit-circuitpython-pca9685==3.4.8  # Servo driver
+adafruit-circuitpython-motorkit==1.6.13  # Motor control
+smbus2==0.4.3  # I2C communication
+
+# Display - TFT Screen
+pygame==2.5.2  # Animation rendering
+Pillow==10.2.0  # Image processing
+
+# Database & Storage
+SQLAlchemy==2.0.25
+aiosqlite==0.19.0
+
+# Utilities
+pyyaml==6.0.1
+python-dateutil==2.8.2
+pytz==2024.1
+colorlog==6.8.0  # Better logging
+
+# Async & Threading
+asyncio==3.4.3
+aiohttp==3.9.1
+
+# System Monitoring
+psutil==5.9.7  # CPU/memory monitoring
+
+# Optional: Cloud APIs (uncomment if using)
+# openai==1.12.0  # OpenAI GPT API
+# anthropic==0.18.1  # Claude API
+# google-cloud-speech==2.24.1  # Google Cloud STT
+# azure-cognitiveservices-speech==1.35.0  # Azure Speech
+
+# Development & Testing
+pytest==7.4.4
+pytest-asyncio==0.23.3
+black==24.1.1
+flake8==7.0.0
+
+# Performance Optimization
+cython==3.0.8
+numba==0.59.0  # JIT compiler for faster processing
