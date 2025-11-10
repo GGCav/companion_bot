@@ -62,4 +62,4 @@ flowchart TD
     style User fill:#e3f2fd,stroke:#2196f3,stroke-width:2px
     style Personality fill:#fce4ec,stroke:#e91e63,stroke-width:2px
 ```
-! [Flow Chart](flow_chart.jpg)
+! [Flow Chart](flow_chart.png)
