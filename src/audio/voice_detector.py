@@ -7,6 +7,7 @@ import numpy as np
 import webrtcvad
 import logging
 from collections import deque
+from scipy import signal
 
 logger = logging.getLogger(__name__)
 
@@ -119,11 +120,22 @@ class VoiceActivityDetector:
             True if voice detected by WebRTC VAD
         """
         try:
+            audio_array = np.frombuffer(audio_chunk, dtype=np.int16)
+            
+            # WebRTC VAD only supports: 8000, 16000, 32000, 48000 Hz
+            # If using 44100 Hz, resample to 16000 Hz
+            target_rate = 16000
+            if self.sample_rate != target_rate:
+                # Resample audio to 16000 Hz
+                num_samples = int(len(audio_array) * target_rate / self.sample_rate)
+                audio_array = signal.resample(audio_array, num_samples).astype(np.int16)
+                vad_sample_rate = target_rate
+            else:
+                vad_sample_rate = self.sample_rate
+            
             # VAD requires specific frame durations (10, 20, or 30 ms)
             frame_duration = 30  # ms
-            frame_size = int(self.sample_rate * frame_duration / 1000)
-
-            audio_array = np.frombuffer(audio_chunk, dtype=np.int16)
+            frame_size = int(vad_sample_rate * frame_duration / 1000)
 
             # Pad or trim to correct size
             if len(audio_array) < frame_size:
@@ -132,7 +144,7 @@ class VoiceActivityDetector:
                 audio_array = audio_array[:frame_size]
 
             audio_bytes = audio_array.tobytes()
-            return self.vad.is_speech(audio_bytes, self.sample_rate)
+            return self.vad.is_speech(audio_bytes, vad_sample_rate)
 
         except Exception as e:
             logger.debug(f"WebRTC VAD error: {e}")
