@@ -314,15 +314,43 @@ class VoicePipeline:
                 logger.info(f"  [{device['index']}] {device['name']} "
                            f"({device['channels']} ch, {device['sample_rate']} Hz)")
 
-            # Try to start listening briefly
+            # Try to start listening
             self.audio_input.start_listening()
-            time.sleep(0.5)
-
-            # Check audio level
-            level = self.audio_input.get_audio_level()
-            logger.info(f"Current audio level: {level:.2f}")
-
+            
+            # Check audio levels multiple times over 3 seconds
+            logger.info("Monitoring audio levels (speak into mic or make noise)...")
+            max_level = 0.0
+            samples = []
+            
+            for i in range(30):  # Sample 30 times over 3 seconds
+                time.sleep(0.1)
+                level = self.audio_input.get_audio_level()
+                samples.append(level)
+                max_level = max(max_level, level)
+                
+                # Show visual feedback
+                if i % 3 == 0:  # Update every 0.3 seconds
+                    bar = '█' * int(level * 50)
+                    logger.info(f"  Level: [{bar:<50}] {level:.3f}")
+            
             self.audio_input.stop_listening()
+            
+            # Show statistics
+            avg_level = sum(samples) / len(samples) if samples else 0
+            logger.info(f"Audio test complete:")
+            logger.info(f"  Max level:     {max_level:.3f}")
+            logger.info(f"  Average level: {avg_level:.3f}")
+            logger.info(f"  Callbacks:     {self.audio_input._callback_count}")
+            
+            if self.audio_input._callback_count == 0:
+                logger.warning("⚠️  No audio callbacks received - stream may not be working")
+            elif max_level < 0.001:
+                logger.warning("⚠️  Audio stream active but no sound detected")
+                logger.warning("    - Check if microphone is muted/disabled")
+                logger.warning("    - Try: alsamixer (check capture levels)")
+                logger.warning("    - Verify device index is correct")
+            else:
+                logger.info("✅ Microphone is working and receiving audio!")
 
             logger.info("✅ Microphone test passed")
             return True
