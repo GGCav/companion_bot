@@ -35,7 +35,8 @@ class AudioInput:
 
         self.pyaudio = pyaudio.PyAudio()
         self.stream: Optional[pyaudio.Stream] = None
-        self.audio_queue = queue.Queue()
+        # Limit queue size to prevent memory issues (100 chunks ~= 6 seconds at 16kHz, ~2 seconds at 44kHz)
+        self.audio_queue = queue.Queue(maxsize=100)
 
         self.is_recording = False
         self.is_listening = False
@@ -120,11 +121,19 @@ class AudioInput:
 
     def _audio_callback(self, in_data, frame_count, time_info, status):
         """Callback for audio stream"""
+        # Status flags: 1=InputUnderflow, 2=InputOverflow, 4=OutputUnderflow, 8=OutputOverflow
         if status:
-            logger.warning(f"Audio callback status: {status}")
+            if status == 2:  # Input overflow
+                logger.debug(f"Input buffer overflow (status={status}) - data coming faster than processing")
+            else:
+                logger.warning(f"Audio callback status: {status}")
 
         if self.is_recording:
-            self.audio_queue.put(in_data)
+            # Use put_nowait to avoid blocking the callback
+            try:
+                self.audio_queue.put_nowait(in_data)
+            except queue.Full:
+                logger.warning("Audio queue full, dropping frame")
 
         return (None, pyaudio.paContinue)
 
