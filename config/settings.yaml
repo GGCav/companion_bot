@@ -4,7 +4,7 @@
 # Audio Configuration - Mini Microphone
 audio:
   input:
-    device_index: null  # null = default device, or specific index (use test script to find)
+    device_index: 2  # null = default device, or specific index (use test script to find)
     channels: 1  # Mini mics typically mono
     sample_rate: 16000  # Good balance for speech recognition
     chunk_size: 1024  # Audio buffer size
