@@ -61,14 +61,23 @@ class VoiceActivityDetector:
         self._update_noise_floor(amplitude)
 
         # Check amplitude threshold (with adaptive noise floor)
-        amplitude_threshold = self.noise_floor * 2.0
+        # Lower multiplier for sensitive detection (was 2.0, now 1.5)
+        amplitude_threshold = self.noise_floor * 1.5
         amplitude_check = amplitude > amplitude_threshold
 
         # Use WebRTC VAD for confirmation
         vad_check = self._check_webrtc_vad(audio_chunk)
 
-        # Combine both checks
-        is_voice = amplitude_check and vad_check
+        # Combine both checks (OR instead of AND for more sensitivity)
+        is_voice = amplitude_check or vad_check
+        
+        # Debug logging (every 50 frames)
+        if not hasattr(self, '_debug_counter'):
+            self._debug_counter = 0
+        self._debug_counter += 1
+        if self._debug_counter % 50 == 0:
+            logger.debug(f"VAD: amp={amplitude:.0f}, threshold={amplitude_threshold:.0f}, "
+                        f"amp_ok={amplitude_check}, vad_ok={vad_check}, voice={is_voice}")
 
         # Update state with hysteresis
         if is_voice:

@@ -111,52 +111,54 @@ class VoicePipeline:
 
         while self.is_running:
             try:
-                # Get audio chunk from input
-                if not self.audio_input.audio_queue.empty():
-                    audio_chunk = self.audio_input.audio_queue.get(timeout=0.1)
+                # Get audio chunk from level_queue (always has latest audio)
+                audio_chunk = None
+                if not self.audio_input.level_queue.empty():
+                    audio_chunk = self.audio_input.level_queue.get(timeout=0.1)
+                
+                if audio_chunk is None:
+                    time.sleep(0.01)  # Small delay if no data
+                    continue
 
-                    # Detect voice activity
-                    has_voice = self.vad.detect(audio_chunk)
+                # Detect voice activity
+                has_voice = self.vad.detect(audio_chunk)
 
-                    if has_voice:
-                        if not speech_detected:
-                            # Speech started
-                            speech_detected = True
-                            audio_buffer = []
-                            silence_frames = 0
-                            logger.info("🎤 Speech detected - recording...")
+                if has_voice:
+                    if not speech_detected:
+                        # Speech started - begin recording
+                        speech_detected = True
+                        audio_buffer = []
+                        silence_frames = 0
+                        logger.info("🎤 Speech detected - recording...")
 
-                            if self.on_speech_start:
-                                self.on_speech_start()
+                        if self.on_speech_start:
+                            self.on_speech_start()
 
-                        # Add to buffer
-                        audio_buffer.append(audio_chunk)
+                    # Add to buffer
+                    audio_buffer.append(audio_chunk)
+                    silence_frames = 0  # Reset silence counter on voice
 
-                    elif speech_detected:
-                        # In speech but current frame has no voice
-                        audio_buffer.append(audio_chunk)
-                        silence_frames += 1
+                elif speech_detected:
+                    # In speech but current frame has no voice
+                    audio_buffer.append(audio_chunk)
+                    silence_frames += 1
 
-                        # Check if speech has ended
-                        if silence_frames >= max_silence_frames:
-                            # Speech ended
-                            logger.info("🔇 Speech ended - transcribing...")
+                    # Check if speech has ended
+                    if silence_frames >= max_silence_frames:
+                        # Speech ended
+                        logger.info("🔇 Speech ended - transcribing...")
 
-                            if self.on_speech_end:
-                                self.on_speech_end()
+                        if self.on_speech_end:
+                            self.on_speech_end()
 
-                            # Process the recorded audio
-                            self._process_audio_buffer(audio_buffer)
+                        # Process the recorded audio
+                        self._process_audio_buffer(audio_buffer)
 
-                            # Reset state
-                            speech_detected = False
-                            audio_buffer = []
-                            silence_frames = 0
-                            self.vad.reset()
-
-                else:
-                    # No audio available, short sleep
-                    time.sleep(0.01)
+                        # Reset state
+                        speech_detected = False
+                        audio_buffer = []
+                        silence_frames = 0
+                        self.vad.reset()
 
             except queue.Empty:
                 continue

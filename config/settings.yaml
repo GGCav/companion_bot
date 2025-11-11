@@ -18,8 +18,8 @@ audio:
   processing:
     noise_reduction: true
     auto_gain: true
-    vad_aggressiveness: 2  # Voice Activity Detection: 0-3 (3 = most aggressive)
-    silence_threshold: 500  # Amplitude threshold for silence detection
+    vad_aggressiveness: 1  # Voice Activity Detection: 0-3 (3 = most aggressive) - lowered for sensitivity
+    silence_threshold: 300  # Amplitude threshold for silence detection (lowered for quiet mic)
     silence_duration: 1.5  # Seconds of silence before stopping recording
 
   wake_word:
@@ -273,7 +273,7 @@ memory:
 
 # System Configuration
 system:
-  log_level: "INFO"  # DEBUG, INFO, WARNING, ERROR
+  log_level: "DEBUG"  # DEBUG, INFO, WARNING, ERROR (temporarily DEBUG for troubleshooting)
   log_file: "data/logs/companion.log"
 
   performance:

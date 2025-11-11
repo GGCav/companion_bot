@@ -15,9 +15,9 @@ sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
 import yaml
 from llm.voice_pipeline import VoicePipeline
 
-# Configure logging
+# Configure logging (DEBUG level to see VAD details)
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
