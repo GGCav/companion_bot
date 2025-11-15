@@ -17,13 +17,23 @@ sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
 import yaml
 from llm.voice_pipeline import VoicePipeline
 
+# Check for debug mode from command line
+import argparse
+parser = argparse.ArgumentParser(description='Voice Assistant Demo')
+parser.add_argument('--debug', action='store_true', help='Enable debug logging to see VAD activity')
+args = parser.parse_args()
+
 # Configure logging
+log_level = logging.DEBUG if args.debug else logging.INFO
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(levelname)s - %(message)s'
+    level=log_level,
+    format='%(asctime)s - %(levelname)s - %(message)s' if args.debug else '%(levelname)s - %(message)s'
 )
 
 logger = logging.getLogger(__name__)
+
+if args.debug:
+    logger.info("🐛 Debug mode enabled - you'll see detailed VAD and audio processing info")
 
 
 class VoiceAssistantDemo:
@@ -90,6 +100,9 @@ class VoiceAssistantDemo:
         print("│ 3. Wait for transcription results                                         │")
         print("│ 4. Try different commands and questions                                   │")
         print("│ 5. Press Ctrl+C to stop and see statistics                                │")
+        print("│                                                                            │")
+        print("│ 💡 TIP: Run with --debug flag to see VAD activity and troubleshoot        │")
+        print("│         python scripts/demo_voice_assistant.py --debug                    │")
         print("└" + "─" * 78 + "┘")
         print("\n🎯 Ready! Start speaking...\n")
 

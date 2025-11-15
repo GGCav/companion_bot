@@ -109,21 +109,33 @@ class VoicePipeline:
         silence_frames = 0
         max_silence_frames = 20  # ~2 seconds at 10 Hz
 
+        # Diagnostic counters
+        chunk_count = 0
+        voice_detected_count = 0
+
         while self.is_running:
             try:
-                # Get audio chunk from level_queue (always has latest audio)
-                audio_chunk = None
-                if not self.audio_input.level_queue.empty():
-                    audio_chunk = self.audio_input.level_queue.get(timeout=0.1)
-                
-                if audio_chunk is None:
-                    time.sleep(0.01)  # Small delay if no data
+                # Get audio chunk from audio_queue (continuous stream)
+                # Use audio_queue instead of level_queue for reliable VAD
+                try:
+                    audio_chunk = self.audio_input.audio_queue.get(timeout=0.1)
+                    chunk_count += 1
+
+                    # Log periodically to show activity
+                    if chunk_count % 100 == 0:
+                        logger.debug(f"Processing audio chunks: {chunk_count}, voice detected: {voice_detected_count} times")
+
+                except queue.Empty:
+                    # No audio available, continue waiting
                     continue
 
                 # Detect voice activity
                 has_voice = self.vad.detect(audio_chunk)
 
                 if has_voice:
+                    voice_detected_count += 1
+                    logger.debug(f"Voice detected in chunk #{chunk_count}")
+
                     if not speech_detected:
                         # Speech started - begin recording
                         speech_detected = True
@@ -160,10 +172,9 @@ class VoicePipeline:
                         silence_frames = 0
                         self.vad.reset()
 
-            except queue.Empty:
-                continue
             except Exception as e:
                 logger.error(f"Error in pipeline loop: {e}", exc_info=True)
+                time.sleep(0.1)  # Brief delay on error to prevent tight loop
 
         logger.info("Pipeline loop ended")
 
