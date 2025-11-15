@@ -17,10 +17,10 @@ sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
 import yaml
 from llm.voice_pipeline import VoicePipeline
 
-# Configure logging
+# Configure logging (DEBUG level to match working test script)
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(levelname)s - %(message)s'
+    level=logging.DEBUG,
+    format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
 logger = logging.getLogger(__name__)
