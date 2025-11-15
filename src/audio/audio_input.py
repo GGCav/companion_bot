@@ -35,11 +35,18 @@ class AudioInput:
 
         self.pyaudio = pyaudio.PyAudio()
         self.stream: Optional[pyaudio.Stream] = None
-        self.audio_queue = queue.Queue()
+        # Limit queue size to prevent memory issues (100 chunks ~= 6 seconds at 16kHz, ~2 seconds at 44kHz)
+        self.audio_queue = queue.Queue(maxsize=100)
+        # Small queue for level monitoring (only keep latest chunk)
+        self.level_queue = queue.Queue(maxsize=1)
 
         self.is_recording = False
         self.is_listening = False
         self.record_thread: Optional[threading.Thread] = None
+        
+        # Diagnostic counter for callback verification
+        self._callback_count = 0
+        self._last_callback_log = 0
 
         # Voice Activity Detection
         self.vad = webrtcvad.Vad(self.vad_config['vad_aggressiveness'])
@@ -86,6 +93,9 @@ class AudioInput:
             return
 
         try:
+            logger.info(f"Opening audio stream: device={self.device_index}, rate={self.sample_rate}, "
+                       f"channels={self.channels}, chunk={self.chunk_size}")
+            
             self.stream = self.pyaudio.open(
                 format=pyaudio.paInt16,
                 channels=self.channels,
@@ -98,7 +108,12 @@ class AudioInput:
 
             self.is_listening = True
             self.stream.start_stream()
-            logger.info("Audio input started")
+            
+            # Verify stream is active
+            if self.stream.is_active():
+                logger.info("✓ Audio input started successfully and stream is active")
+            else:
+                logger.warning("⚠ Audio stream opened but not active")
 
         except Exception as e:
             logger.error(f"Failed to start audio input: {e}")
@@ -120,11 +135,39 @@ class AudioInput:
 
     def _audio_callback(self, in_data, frame_count, time_info, status):
         """Callback for audio stream"""
+        # Diagnostic: count callbacks
+        self._callback_count += 1
+        if self._callback_count - self._last_callback_log >= 50:  # Log every 50 callbacks
+            audio_array = np.frombuffer(in_data, dtype=np.int16)
+            level = np.abs(audio_array).mean()
+            logger.debug(f"Callback #{self._callback_count}: received {len(in_data)} bytes, level={level:.1f}")
+            self._last_callback_log = self._callback_count
+        
+        # Status flags: 1=InputUnderflow, 2=InputOverflow, 4=OutputUnderflow, 8=OutputOverflow
         if status:
-            logger.warning(f"Audio callback status: {status}")
+            if status == 2:  # Input overflow
+                logger.debug(f"Input buffer overflow (status={status}) - data coming faster than processing")
+            else:
+                logger.warning(f"Audio callback status: {status}")
 
+        # Always update level queue for monitoring (keep only latest chunk)
+        try:
+            # Clear old data and add new
+            if self.level_queue.full():
+                try:
+                    self.level_queue.get_nowait()
+                except queue.Empty:
+                    pass
+            self.level_queue.put_nowait(in_data)
+        except:
+            pass  # Ignore errors in level monitoring
+
+        # Add to recording queue if recording
         if self.is_recording:
-            self.audio_queue.put(in_data)
+            try:
+                self.audio_queue.put_nowait(in_data)
+            except queue.Full:
+                logger.warning("Audio queue full, dropping frame")
 
         return (None, pyaudio.paContinue)
 
@@ -266,16 +309,28 @@ class AudioInput:
         Returns:
             Normalized audio level
         """
-        if not self.is_listening or self.audio_queue.empty():
+        if not self.is_listening:
             return 0.0
 
         try:
-            audio_chunk = self.audio_queue.get_nowait()
+            # Peek at the latest audio chunk without removing it
+            if self.level_queue.empty():
+                return 0.0
+            
+            audio_chunk = self.level_queue.get_nowait()
             audio_array = np.frombuffer(audio_chunk, dtype=np.int16)
             level = np.abs(audio_array).mean() / 32768.0  # Normalize to 0-1
+            
+            # Put it back for next check
+            try:
+                self.level_queue.put_nowait(audio_chunk)
+            except queue.Full:
+                pass
+            
             return min(1.0, level)
 
-        except (queue.Empty, Exception):
+        except (queue.Empty, Exception) as e:
+            logger.debug(f"Error getting audio level: {e}")
             return 0.0
 
     def cleanup(self):
