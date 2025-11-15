@@ -4,7 +4,7 @@
 # Audio Configuration - Mini Microphone
 audio:
   input:
-    device_index: 1  # null = default device, or specific index (use test script to find)
+    device_index: 0  # null = default device, or specific index (use test script to find)
     channels: 1  # Mini mics typically mono
     sample_rate: 44100  # USB device native sample rate (device doesn't support 16kHz)
     chunk_size: 4096  # Audio buffer size (larger chunk for high sample rate = fewer callbacks, less overflow)
