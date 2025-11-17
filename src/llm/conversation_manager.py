@@ -402,7 +402,7 @@ if __name__ == "__main__":
                 'provider': 'ollama',
                 'ollama': {
                     'base_url': 'http://localhost:11434',
-                    'model': 'llama3.2:3b',
+                    'model': 'tinyllama:latest',
                     'timeout': 30
                 },
                 'generation': {
