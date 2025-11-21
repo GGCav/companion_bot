@@ -150,8 +150,15 @@ class ConversationPipeline:
         if self.on_transcribed:
             self.on_transcribed(transcribed_text)
 
-        # Process and respond
-        self._process_and_respond(transcribed_text)
+        # Process and respond - route to streaming or non-streaming based on config
+        streaming_enabled = self.config.get('llm', {}).get('streaming', {}).get('enabled', False)
+
+        if streaming_enabled:
+            logger.debug("Routing to streaming response handler")
+            self._process_and_respond_streaming(transcribed_text)
+        else:
+            logger.debug("Routing to non-streaming response handler")
+            self._process_and_respond(transcribed_text)
 
     def _process_and_respond(self, user_text: str):
         """
@@ -173,10 +180,12 @@ class ConversationPipeline:
                 self.on_thinking()
 
             # Generate response using conversation manager
+            # The LLM chooses the emotion(s) and returns it in metadata
             response_text, metadata = self.conversation_manager.process_user_input(user_text)
 
-            # Get current emotion for TTS modulation
+            # Get emotion and emotion segments from metadata
             emotion = metadata.get('emotion', 'happy')
+            emotion_segments = metadata.get('emotion_segments', None)
 
             logger.info(f"Generated response ({emotion}): {response_text}")
 
@@ -184,11 +193,17 @@ class ConversationPipeline:
             if self.on_responding:
                 self.on_responding(response_text, emotion)
 
-            # Speak response with emotion
+            # Speak response - use segmented speech if available
             if self.on_speaking:
                 self.on_speaking()
 
-            self.tts.speak_with_emotion(response_text, emotion, wait=True)
+            if emotion_segments and len(emotion_segments) > 1:
+                # Multi-emotion response - speak each segment with its emotion
+                logger.info(f"Using segmented speech with {len(emotion_segments)} emotion transitions")
+                self.tts.speak_segments_with_emotions(emotion_segments, wait=True)
+            else:
+                # Single emotion or no segments - use traditional method
+                self.tts.speak_with_emotion(response_text, emotion, wait=True)
 
             # Update statistics
             response_time = time.time() - start_time
@@ -204,6 +219,77 @@ class ConversationPipeline:
 
         except Exception as e:
             logger.error(f"Error processing conversation: {e}", exc_info=True)
+
+        finally:
+            self.is_processing = False
+
+    def _process_and_respond_streaming(self, user_text: str):
+        """
+        Process user input with streaming response generation
+        Speaks segments as soon as they're ready for faster perceived response time
+
+        Args:
+            user_text: User's transcribed speech
+        """
+        if self.is_processing:
+            logger.warning("Already processing, skipping")
+            return
+
+        self.is_processing = True
+        start_time = time.time()
+        first_segment = True
+        segment_count = 0
+        combined_response = ""
+
+        try:
+            # Trigger thinking callback
+            if self.on_thinking:
+                self.on_thinking()
+
+            logger.info("Using streaming response generation")
+
+            # Stream response segments from conversation manager
+            for emotion, text in self.conversation_manager.stream_generate_with_personality(user_text):
+                segment_count += 1
+                combined_response += " " + text if combined_response else text
+
+                # Trigger responding callback on first segment
+                if first_segment:
+                    if self.on_responding:
+                        self.on_responding(text, emotion)
+                    first_segment = False
+
+                    # Log time to first segment
+                    time_to_first = time.time() - start_time
+                    logger.info(f"First segment ready in {time_to_first:.2f}s (emotion: {emotion})")
+
+                # Trigger speaking callback
+                if self.on_speaking:
+                    self.on_speaking()
+
+                # Speak this segment immediately
+                logger.info(f"Speaking segment {segment_count} ({emotion}): {text[:40]}...")
+                self.tts.speak_with_emotion(text, emotion, wait=True)
+
+            # Update statistics
+            response_time = time.time() - start_time
+            self.total_conversations += 1
+            self.total_response_time += response_time
+            self.average_response_time = self.total_response_time / self.total_conversations
+
+            logger.info(f"Streaming conversation complete in {response_time:.2f}s ({segment_count} segments)")
+
+            # Trigger complete callback
+            if self.on_complete:
+                self.on_complete()
+
+        except Exception as e:
+            logger.error(f"Error processing streaming conversation: {e}", exc_info=True)
+            # Try to speak error message
+            try:
+                self.tts.speak_with_emotion("Sorry, I had trouble with that.", "sad", wait=True)
+            except Exception as tts_error:
+                logger.error(f"Failed to speak error message: {tts_error}")
 
         finally:
             self.is_processing = False

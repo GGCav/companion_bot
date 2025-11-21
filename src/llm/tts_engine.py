@@ -113,6 +113,60 @@ class TTSEngine:
         """
         self.speak(text, emotion=emotion, wait=wait)
 
+    def speak_segments_with_emotions(self, segments: list, wait: bool = False):
+        """
+        Speak multiple text segments, each with its own emotion
+
+        Enables natural emotion transitions within a single response.
+        Each segment is spoken with appropriate voice modulation.
+
+        Args:
+            segments: List of (emotion, text) tuples
+            wait: If True, wait for all segments to finish
+
+        Example:
+            segments = [
+                ("excited", "Hello!"),
+                ("curious", "What are you doing?")
+            ]
+        """
+        if not segments:
+            logger.warning("Empty segments list, skipping TTS")
+            return
+
+        try:
+            import time
+
+            logger.info(f"Speaking {len(segments)} emotion segment(s)")
+
+            for i, (emotion, text) in enumerate(segments):
+                if not text or not text.strip():
+                    continue
+
+                # Apply emotion for this segment
+                if emotion and emotion in self.emotion_modulations:
+                    self._set_emotion_voice(emotion)
+                else:
+                    self._reset_voice()
+
+                # Speak this segment (always wait for it to finish)
+                self.tts.speak(text, wait=True)
+
+                # Small pause between segments (50ms) for natural transition
+                # Skip pause after the last segment
+                if i < len(segments) - 1:
+                    time.sleep(0.05)
+
+                # Update stats
+                self.total_utterances += 1
+
+                logger.debug(f"Segment {i+1}/{len(segments)}: ({emotion}) {text[:30]}...")
+
+            logger.info(f"Completed speaking {len(segments)} segment(s)")
+
+        except Exception as e:
+            logger.error(f"Error in segmented TTS: {e}")
+
     def speak_async(self, text: str, emotion: Optional[str] = None):
         """
         Speak asynchronously (non-blocking)

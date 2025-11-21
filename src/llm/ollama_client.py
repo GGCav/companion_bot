@@ -163,26 +163,21 @@ class OllamaClient:
     def generate_with_personality(
         self,
         user_input: str,
-        emotion: str = "happy",
-        energy: float = 0.7,
         user_name: str = "friend"
     ) -> Dict[str, any]:
         """
-        Generate response with personality and emotion
+        Generate response with personality
+        The LLM will choose and output its own emotion based on context.
 
         Args:
             user_input: User's message
-            emotion: Current emotion state
-            energy: Energy level (0-1)
             user_name: User's name
 
         Returns:
-            Dictionary with response and metadata
+            Dictionary with response (format: "[emotion] message") and metadata
         """
-        # Build personality prompt with current state
+        # Build personality prompt with user name
         system_prompt = self.personality_template.format(
-            emotion=emotion,
-            energy=f"{energy:.0%}",
             user_name=user_name
         )
 
@@ -415,10 +410,10 @@ if __name__ == "__main__":
         print("\nTesting with personality...")
         result = client.generate_with_personality(
             "How are you?",
-            emotion="happy",
-            energy=0.9
+            user_name="friend"
         )
         print(f"\nResponse: {result['response']}")
+        print("(Note: Response should include [emotion] tag)")
 
         # Show stats
         stats = client.get_statistics()

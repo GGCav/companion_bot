@@ -108,6 +108,93 @@ class EmotionEngine:
         self.add_emotion(EmotionState.EXCITED, boost * 0.5)
         logger.info(f"Recognized {user_name}")
 
+    def set_emotion_from_llm(self, emotion_str: str, intensity: float = 0.8):
+        """
+        Set emotion based on LLM's choice
+        This is the new primary way to update emotions - the LLM decides the emotion
+
+        Args:
+            emotion_str: Emotion name (e.g., "happy", "excited")
+            intensity: Emotion intensity (0-1), defaults to 0.8
+        """
+        self.last_interaction_time = time.time()
+
+        # Convert string to EmotionState enum
+        try:
+            emotion = EmotionState(emotion_str.lower())
+        except ValueError:
+            logger.warning(f"Invalid emotion '{emotion_str}', defaulting to happy")
+            emotion = EmotionState.HAPPY
+
+        # Set this emotion as dominant
+        # Reset other emotions to lower values for cleaner state
+        for e in EmotionState:
+            if e == emotion:
+                self.emotion_scores[e] = intensity
+            else:
+                # Keep a bit of previous emotions for natural blending
+                self.emotion_scores[e] = max(0.0, self.emotion_scores[e] * 0.3)
+
+        # Update primary emotion
+        self._update_primary_emotion()
+
+        logger.info(f"Emotion set from LLM: {emotion.value} (intensity: {intensity:.2f})")
+
+    def process_emotion_sequence(self, emotion_list: list):
+        """
+        Process a sequence of emotions from multi-emotion LLM response
+
+        The final emotion in the sequence becomes dominant, but earlier emotions
+        contribute with decreasing weight to create a natural emotional blend.
+
+        Example:
+            ["excited", "curious", "happy"]
+            → excited: 0.3, curious: 0.5, happy: 0.8 (final is strongest)
+
+        Args:
+            emotion_list: List of emotion strings in sequential order
+        """
+        if not emotion_list:
+            logger.warning("Empty emotion sequence, no update")
+            return
+
+        self.last_interaction_time = time.time()
+
+        # Reset current emotion scores for clean slate
+        for e in EmotionState:
+            self.emotion_scores[e] = max(0.0, self.emotion_scores[e] * 0.2)
+
+        # Process each emotion with increasing intensity
+        num_emotions = len(emotion_list)
+        for i, emotion_str in enumerate(emotion_list):
+            # Convert to enum
+            try:
+                emotion = EmotionState(emotion_str.lower())
+            except ValueError:
+                logger.warning(f"Invalid emotion '{emotion_str}' in sequence, skipping")
+                continue
+
+            # Calculate intensity: earlier emotions weaker, final emotion strongest
+            # Intensity ranges from 0.3 (first) to 0.8 (last)
+            base_intensity = 0.3
+            max_intensity = 0.8
+            if num_emotions > 1:
+                position_weight = i / (num_emotions - 1)  # 0.0 to 1.0
+                intensity = base_intensity + (max_intensity - base_intensity) * position_weight
+            else:
+                intensity = max_intensity
+
+            # Add this emotion (blend with existing)
+            self.emotion_scores[emotion] = max(
+                self.emotion_scores[emotion],
+                intensity
+            )
+
+        # Update primary emotion (will be the strongest, likely the last one)
+        self._update_primary_emotion()
+
+        logger.info(f"Processed emotion sequence: {' → '.join(emotion_list)} (final: {self.current_emotion.value})")
+
     def _update_primary_emotion(self):
         """Update primary emotion based on scores"""
         max_emotion = max(self.emotion_scores.items(), key=lambda x: x[1])
