@@ -84,18 +84,32 @@ def test_personality_prompts(config):
         print("⏭️  Skipping (Ollama not available)")
         return False
 
-    emotions = ['happy', 'sad', 'excited', 'sleepy']
+    # Test that LLM autonomously chooses appropriate emotions
+    test_prompts = [
+        ("Hello! How are you today?", "should express greeting emotion"),
+        ("I just won a prize!", "should express excited/happy emotion"),
+        ("Tell me something interesting", "should express curious emotion"),
+    ]
 
-    for emotion in emotions:
-        print(f"\n😊 Testing '{emotion}' emotion...")
+    for prompt, expected_behavior in test_prompts:
+        print(f"\n💬 Testing: '{prompt}'")
+        print(f"   Expected: {expected_behavior}")
 
         result = client.generate_with_personality(
-            user_input="How are you?",
-            emotion=emotion,
-            energy=0.8
+            user_input=prompt,
+            user_name="friend"
         )
 
-        print(f"   Response: {result['response']}")
+        response = result['response']
+        print(f"   Response: {response}")
+
+        # Verify response includes emotion tag format: [emotion] text
+        if response.startswith('[') and ']' in response:
+            emotion_end = response.index(']')
+            emotion = response[1:emotion_end]
+            print(f"   ✅ LLM chose emotion: {emotion}")
+        else:
+            print("   ⚠️  No emotion tag detected in response")
 
     return True
 
@@ -219,6 +233,75 @@ def interactive_mode(config):
     return True
 
 
+def test_emotion_segments(config):
+    """Test that metadata includes emotion_segments for multi-emotion responses"""
+    print("\n" + "="*70)
+    print("TEST 6: Emotion Segments in Metadata")
+    print("="*70)
+
+    manager = ConversationManager(config)
+
+    if not manager.llm.is_available:
+        print("⏭️  Skipping (Ollama not available)")
+        return False
+
+    print("\n📊 Testing emotion segments...")
+
+    # Test with a prompt that might generate multiple emotions
+    response, metadata = manager.process_user_input(
+        "Tell me a short story with different emotions!"
+    )
+
+    print(f"\n🤖 Response: {response}")
+
+    # Check metadata structure
+    assert 'emotion_segments' in metadata, "metadata should include emotion_segments"
+    assert isinstance(metadata['emotion_segments'], list), "emotion_segments should be a list"
+
+    segments = metadata['emotion_segments']
+    print(f"\n✅ Found {len(segments)} emotion segment(s)")
+
+    # Verify each segment structure
+    for i, segment in enumerate(segments, 1):
+        assert isinstance(segment, tuple), f"Segment {i} should be a tuple"
+        assert len(segment) == 2, f"Segment {i} should have 2 elements (emotion, text)"
+
+        emotion, text = segment
+        assert isinstance(emotion, str), f"Segment {i} emotion should be a string"
+        assert isinstance(text, str), f"Segment {i} text should be a string"
+
+        print(f"   Segment {i}: ({emotion}) {text[:50]}...")
+
+    print("\n✅ Emotion segments test complete")
+    return True
+
+
+def test_segmented_tts(config):
+    """Test segmented TTS with multiple emotions"""
+    print("\n" + "="*70)
+    print("TEST 7: Segmented TTS")
+    print("="*70)
+
+    tts = TTSEngine(config)
+
+    segments = [
+        ("excited", "Hello friend!"),
+        ("curious", "What are you up to today?"),
+        ("happy", "That sounds great!")
+    ]
+
+    print(f"\n🔊 Testing segmented speech with {len(segments)} segments...")
+
+    for i, (emotion, text) in enumerate(segments, 1):
+        print(f"   Segment {i}: ({emotion}) {text}")
+
+    # Speak all segments
+    tts.speak_segments_with_emotions(segments, wait=True)
+
+    print("\n✅ Segmented TTS test complete")
+    return True
+
+
 def main():
     """Main test function"""
     print("\n" + "="*70)
@@ -248,6 +331,8 @@ def main():
         ("Personality Prompts", test_personality_prompts),
         ("Conversation Manager", test_conversation_manager),
         ("TTS Engine", test_tts_engine),
+        ("Emotion Segments", test_emotion_segments),
+        ("Segmented TTS", test_segmented_tts),
     ]
 
     results = []
@@ -261,7 +346,7 @@ def main():
             return 1
         except Exception as e:
             print(f"\n❌ Test failed with error: {e}")
-            logger.error(f"Test error", exc_info=True)
+            logger.error("Test error", exc_info=True)
             results.append((test_name, False))
 
     # Summary

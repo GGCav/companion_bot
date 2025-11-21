@@ -124,12 +124,13 @@ client = OllamaClient(config)
 result = client.generate("Say hello!")
 print(result['response'])
 
-# With personality
+# With personality (LLM autonomously chooses emotion)
 result = client.generate_with_personality(
-    "How are you?",
-    emotion="happy",
-    energy=0.9
+    user_input="How are you?",
+    user_name="friend"
 )
+# Response format: "[emotion] message text"
+# Example: "[happy] I'm doing great, thank you friend!"
 ```
 
 ---
