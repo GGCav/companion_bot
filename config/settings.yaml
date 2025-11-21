@@ -199,7 +199,7 @@ llm:
 
   ollama:
     base_url: "http://localhost:11434"
-    model: "tinyllama:latest"  # Lightweight model for Pi
+    model: "llama3.2:1b "  # Lightweight model for Pi
     timeout: 30  # Seconds
 
   generation:
