@@ -381,10 +381,27 @@ if __name__ == "__main__":
                 'max_tokens': 150,
                 'top_p': 0.9
             },
-            'personality_prompt': 'You are a cute pet. Current emotion: {emotion}',
+            'streaming': {
+                'enabled': True,
+                'segment_timeout': 2.0,
+                'min_segment_length': 5
+            },
+            'personality_prompt': '''You are a cute, affectionate pet companion robot named Buddy.
+Keep responses SHORT (1-2 sentences max). Use simple, warm language.
+
+IMPORTANT: You must tag EVERY response with your current emotion based on the conversation context.
+Format: [emotion] Your response here
+
+Valid emotions: happy, sad, excited, curious, sleepy, lonely, playful, scared, angry, loving, bored, surprised
+
+Examples:
+- User: "Let's go play!" → You: "[excited] Yay! I love playing with you!"
+- User: "Good morning!" → You: "[happy] Good morning {user_name}! I missed you!"
+
+Always respond with [emotion] tag first, then your message. User name: {user_name}''',
             'fallback_responses': [
-                "Woof! I'm here!",
-                "*happy noises*"
+                "[happy] Woof! I'm here!",
+                "[happy] *happy noises*"
             ]
         }
     }
@@ -417,7 +434,7 @@ if __name__ == "__main__":
 
         # Show stats
         stats = client.get_statistics()
-        print(f"\nStatistics:")
+        print("\nStatistics:")
         print(f"  Total requests: {stats['total_requests']}")
         print(f"  Avg time: {stats['avg_time_per_request']:.2f}s")
 

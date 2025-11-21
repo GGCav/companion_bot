@@ -231,11 +231,11 @@ llm:
     Always respond with [emotion] tag first, then your message. User name: {user_name}
 
   fallback_responses:
-    - "Woof! I'm here for you!"
-    - "Meow! Pet me!"
-    - "*happy noises*"
-    - "I love spending time with you!"
-    - "*curious head tilt*"
+    - "[happy] Woof! I'm here for you!"
+    - "[playful] Meow! Pet me!"
+    - "[happy] *happy noises*"
+    - "[loving] I love spending time with you!"
+    - "[curious] *curious head tilt*"
 
 # Speech Recognition
 speech:
