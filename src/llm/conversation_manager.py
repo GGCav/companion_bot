@@ -193,7 +193,8 @@ class ConversationManager:
         self,
         config: dict,
         emotion_engine=None,
-        user_memory=None
+        user_memory=None,
+        conversation_history=None
     ):
         """
         Initialize conversation manager
@@ -202,10 +203,12 @@ class ConversationManager:
             config: Configuration dictionary
             emotion_engine: Optional EmotionEngine instance
             user_memory: Optional UserMemory instance
+            conversation_history: Optional ConversationHistory instance
         """
         self.config = config
         self.emotion_engine = emotion_engine
         self.user_memory = user_memory
+        self.conversation_history_db = conversation_history
 
         # Initialize LLM client
         self.llm = OllamaClient(config)
@@ -214,7 +217,7 @@ class ConversationManager:
         self.context_window = config.get('memory', {}).get('conversation', {}).get('context_window', 10)
         self.max_history = config.get('memory', {}).get('conversation', {}).get('max_history', 50)
 
-        # Conversation history
+        # Conversation history (in-memory)
         self.conversation_history: deque = deque(maxlen=self.max_history)
         self.current_context: deque = deque(maxlen=self.context_window)
 
@@ -223,6 +226,7 @@ class ConversationManager:
         self.current_user_name: str = "friend"
         self.conversation_start_time = time.time()
         self.message_count = 0
+        self.session_id = self._generate_session_id()
 
         # Response filtering
         self.max_response_length = 200  # Characters
@@ -295,9 +299,14 @@ class ConversationManager:
         # Combined filtered text for history
         filtered_response = ' '.join(text for _, text in filtered_segments)
 
-        # Update conversation history
+        # Update conversation history (save to database with metadata)
         self._add_to_history('user', user_text)
-        self._add_to_history('assistant', filtered_response)
+        self._add_to_history(
+            'assistant',
+            filtered_response,
+            emotion=final_emotion,
+            tokens=result.get('tokens', 0)
+        )
 
         # Update context window
         self._update_context(user_text, filtered_response)
@@ -485,19 +494,38 @@ class ConversationManager:
         self.current_context.append(('user', user_msg))
         self.current_context.append(('assistant', assistant_msg))
 
-    def _add_to_history(self, role: str, message: str):
+    def _add_to_history(self, role: str, message: str, emotion: str = None, tokens: int = 0):
         """
-        Add message to full conversation history
+        Add message to full conversation history (in-memory and database)
 
         Args:
             role: 'user' or 'assistant'
             message: Message content
+            emotion: Optional emotion (for assistant messages)
+            tokens: Optional token count (for assistant messages)
         """
+        # Add to in-memory history
         self.conversation_history.append({
             'role': role,
             'message': message,
+            'emotion': emotion,
+            'tokens': tokens,
             'timestamp': time.time()
         })
+
+        # Save to database if available
+        if self.conversation_history_db:
+            try:
+                self.conversation_history_db.save_message(
+                    user_id=self.current_user_id,
+                    session_id=self.session_id,
+                    role=role,
+                    message=message,
+                    emotion=emotion,
+                    tokens=tokens
+                )
+            except Exception as e:
+                logger.warning(f"Failed to save message to database: {e}")
 
     def _get_current_emotion(self) -> str:
         """
@@ -553,11 +581,25 @@ class ConversationManager:
         """Update current user name from memory"""
         if self.user_memory and self.current_user_id:
             try:
-                # Get user profile (if memory module is implemented)
-                # For now, use default
-                self.current_user_name = "friend"
+                user_profile = self.user_memory.get_user_by_id(self.current_user_id)
+                if user_profile:
+                    self.current_user_name = user_profile['name']
+                    logger.info(f"Loaded user profile: {self.current_user_name} (ID: {self.current_user_id})")
+                else:
+                    self.current_user_name = "friend"
             except Exception as e:
                 logger.error(f"Error getting user name: {e}")
+                self.current_user_name = "friend"
+
+    def _generate_session_id(self) -> str:
+        """
+        Generate unique session ID
+
+        Returns:
+            Session ID string
+        """
+        import uuid
+        return str(uuid.uuid4())
 
     def _parse_emotion_segments(self, response: str) -> List[Tuple[str, str]]:
         """

@@ -33,7 +33,8 @@ class ConversationPipeline:
         self,
         config: dict,
         emotion_engine=None,
-        user_memory=None
+        user_memory=None,
+        conversation_history=None
     ):
         """
         Initialize conversation pipeline
@@ -42,10 +43,12 @@ class ConversationPipeline:
             config: Configuration dictionary
             emotion_engine: Optional EmotionEngine instance
             user_memory: Optional UserMemory instance
+            conversation_history: Optional ConversationHistory instance
         """
         self.config = config
         self.emotion_engine = emotion_engine
         self.user_memory = user_memory
+        self.conversation_history = conversation_history
 
         # Initialize components
         logger.info("Initializing conversation pipeline components...")
@@ -54,7 +57,8 @@ class ConversationPipeline:
         self.conversation_manager = ConversationManager(
             config,
             emotion_engine=emotion_engine,
-            user_memory=user_memory
+            user_memory=user_memory,
+            conversation_history=conversation_history
         )
         self.tts = TTSEngine(config)
 

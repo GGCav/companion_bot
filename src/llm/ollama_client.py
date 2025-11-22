@@ -276,8 +276,8 @@ class OllamaClient:
             parts.extend(context)
             parts.append("")  # Blank line
 
-        # Add current user prompt
-        parts.append(user_prompt)
+        # Add current user prompt with "User: " prefix
+        parts.append(f"User: {user_prompt}")
 
         return "\n".join(parts)
 
