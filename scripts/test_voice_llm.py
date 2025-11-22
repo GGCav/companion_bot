@@ -13,7 +13,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
 
 import yaml
-from audio import VoicePipeline
+from llm.voice_pipeline import VoicePipeline
 from llm import ConversationManager
 
 # Configure logging
