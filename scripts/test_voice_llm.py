@@ -82,26 +82,29 @@ def main():
 
     conversation_count = 0
 
+    # Start the voice pipeline
+    voice_input.start()
+
     try:
         while True:
-            # Listen for voice input
+            # Wait for voice input (blocks until speech detected or timeout)
             print("\n🎤 Listening...")
-            audio_data = voice_input.listen()
+            result = voice_input.wait_for_transcription(timeout=30.0)
 
-            if audio_data is None:
+            if result is None:
                 print("   No speech detected, trying again...")
                 continue
 
-            # Transcribe
-            print("📝 Transcribing...")
-            transcription = voice_input.transcribe(audio_data)
+            # Extract transcription from result
+            transcription = result.get('text', '').strip()
+            confidence = result.get('confidence', 0.0)
 
-            if not transcription or not transcription.strip():
+            if not transcription:
                 print("   Could not transcribe, trying again...")
                 continue
 
             # Display what user said
-            print(f"\n👤 You said: {transcription}")
+            print(f"\n👤 You said: {transcription} (confidence: {confidence:.0%})")
 
             # Check for exit command
             if transcription.lower() in ['quit', 'exit', 'goodbye', 'bye']:
@@ -124,14 +127,14 @@ def main():
             # Display metadata every 3 conversations
             conversation_count += 1
             if conversation_count % 3 == 0:
-                print(f"\n   📊 Metadata:")
+                print("\n   📊 Metadata:")
                 print(f"      ⏱️  Response time: {response_time:.2f}s")
                 print(f"      🎭 Emotion: {metadata['emotion']}")
                 print(f"      📊 Tokens: {metadata['tokens']}")
                 print(f"      ⚡ Energy: {metadata['energy']:.0%}")
                 print(f"      💬 Messages: {metadata['message_count']}")
                 if metadata.get('fallback'):
-                    print(f"      ⚠️  Using fallback response")
+                    print("      ⚠️  Using fallback response")
 
             print("\n" + "─" * 70)
 
@@ -142,6 +145,10 @@ def main():
         print(f"\n❌ Error: {e}")
         logger.error("Runtime error", exc_info=True)
         return 1
+
+    finally:
+        # Clean up voice pipeline
+        voice_input.cleanup()
 
     # Show summary
     print("\n" + "="*70)
