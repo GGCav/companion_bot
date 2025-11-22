@@ -55,7 +55,7 @@ The full voice-to-voice conversation system:
 
 2. **Pull the Model**
    ```bash
-   ollama pull llama3.2:3b
+   ollama pull llama3.2:1b
    ```
 
 3. **Start Ollama Service**
@@ -241,7 +241,7 @@ llm:
   provider: "ollama"
   ollama:
     base_url: "http://localhost:11434"
-    model: "llama3.2:3b"  # Lightweight for Raspberry Pi
+    model: "llama3.2:1b"  # Lightweight for Raspberry Pi
     timeout: 30
 
   generation:
@@ -406,7 +406,7 @@ python scripts/demo_full_conversation.py
 | Component | Time | Notes |
 |-----------|------|-------|
 | Whisper STT | ~5s | Base model |
-| Ollama LLM | ~3-8s | llama3.2:3b |
+| Ollama LLM | ~3-8s | llama3.2:1b |
 | pyttsx3 TTS | ~1-2s | Depends on length |
 | **Total Latency** | **~10-15s** | Full conversation cycle |
 
@@ -429,10 +429,10 @@ curl http://localhost:11434/api/tags
 ollama serve
 
 # Pull model
-ollama pull llama3.2:3b
+ollama pull llama3.2:1b
 
 # Test generation
-ollama run llama3.2:3b "Say hello"
+ollama run llama3.2:1b "Say hello"
 ```
 
 ### Slow Responses
@@ -589,7 +589,7 @@ history = pipeline.get_conversation_history()
 1. **Install Ollama**:
    ```bash
    curl -fsSL https://ollama.com/install.sh | sh
-   ollama pull llama3.2:3b
+   ollama pull llama3.2:1b
    ```
 
 2. **Test LLM** (text-only):
