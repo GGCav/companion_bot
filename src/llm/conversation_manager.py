@@ -268,9 +268,13 @@ class ConversationManager:
         # Generate response from LLM (LLM will choose emotion)
         start_time = time.time()
 
+        # Format conversation context for LLM
+        formatted_context = self._format_context_for_llm()
+
         result = self.llm.generate_with_personality(
             user_input=user_text,
-            user_name=self.current_user_name
+            user_name=self.current_user_name,
+            context=formatted_context
         )
 
         response_time = time.time() - start_time
@@ -386,13 +390,16 @@ class ConversationManager:
 
         logger.info("Starting streaming generation...")
 
+        # Format conversation context for LLM
+        formatted_context = self._format_context_for_llm()
+
         # Track segments for history and emotion engine
         all_segments = []
         segment_count = 0
 
         try:
             # Stream tokens from LLM
-            for token in self.llm.stream_generate(user_text, system_prompt=system_prompt):
+            for token in self.llm.stream_generate(user_text, system_prompt=system_prompt, context=formatted_context):
                 # Parse token and check for complete segments
                 segments = parser.add_token(token)
 
@@ -521,6 +528,26 @@ class ConversationManager:
                 logger.error(f"Error getting energy: {e}")
 
         return 0.7  # Default
+
+    def _format_context_for_llm(self) -> Optional[List[str]]:
+        """
+        Format conversation context for LLM
+
+        Returns:
+            Formatted context as list of strings, or None if empty
+        """
+        if not self.current_context:
+            return None
+
+        # Format each exchange as "User: ...\nAssistant: ..."
+        formatted = []
+        for role, message in self.current_context:
+            if role == 'user':
+                formatted.append(f"User: {message}")
+            else:
+                formatted.append(f"Assistant: {message}")
+
+        return formatted
 
     def _update_user_name(self):
         """Update current user name from memory"""

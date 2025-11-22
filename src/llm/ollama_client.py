@@ -167,7 +167,8 @@ class OllamaClient:
     def generate_with_personality(
         self,
         user_input: str,
-        user_name: str = "friend"
+        user_name: str = "friend",
+        context: Optional[List[str]] = None
     ) -> Dict[str, any]:
         """
         Generate response with personality
@@ -176,6 +177,7 @@ class OllamaClient:
         Args:
             user_input: User's message
             user_name: User's name
+            context: Optional conversation history
 
         Returns:
             Dictionary with response (format: "[emotion] message") and metadata
@@ -185,12 +187,13 @@ class OllamaClient:
             user_name=user_name
         )
 
-        return self.generate(user_input, system_prompt=system_prompt)
+        return self.generate(user_input, system_prompt=system_prompt, context=context)
 
     def stream_generate(
         self,
         prompt: str,
-        system_prompt: Optional[str] = None
+        system_prompt: Optional[str] = None,
+        context: Optional[List[str]] = None
     ) -> Iterator[str]:
         """
         Generate response with streaming (word-by-word)
@@ -198,6 +201,7 @@ class OllamaClient:
         Args:
             prompt: User prompt
             system_prompt: Optional system prompt
+            context: Optional conversation history
 
         Yields:
             Response tokens as they are generated
@@ -209,8 +213,8 @@ class OllamaClient:
             return
 
         try:
-            # Build user prompt (NOT system prompt)
-            full_prompt = self._build_prompt(prompt)
+            # Build user prompt with context (NOT system prompt)
+            full_prompt = self._build_prompt(prompt, context)
 
             # Make streaming API request
             payload = {
