@@ -108,10 +108,10 @@ class OllamaClient:
         start_time = time.time()
 
         try:
-            # Build full prompt
-            full_prompt = self._build_prompt(prompt, system_prompt, context)
+            # Build user prompt with context (NOT system prompt)
+            full_prompt = self._build_prompt(prompt, context)
 
-            # Make API request
+            # Make API request with system as separate parameter
             payload = {
                 'model': self.model,
                 'prompt': full_prompt,
@@ -122,6 +122,10 @@ class OllamaClient:
                     'top_p': self.top_p,
                 }
             }
+
+            # Add system prompt as dedicated parameter (better instruction following)
+            if system_prompt:
+                payload['system'] = system_prompt
 
             response = requests.post(
                 f"{self.base_url}/api/generate",
@@ -205,8 +209,8 @@ class OllamaClient:
             return
 
         try:
-            # Build full prompt
-            full_prompt = self._build_prompt(prompt, system_prompt)
+            # Build user prompt (NOT system prompt)
+            full_prompt = self._build_prompt(prompt)
 
             # Make streaming API request
             payload = {
@@ -219,6 +223,10 @@ class OllamaClient:
                     'top_p': self.top_p,
                 }
             }
+
+            # Add system prompt as dedicated parameter
+            if system_prompt:
+                payload['system'] = system_prompt
 
             response = requests.post(
                 f"{self.base_url}/api/generate",
@@ -244,15 +252,14 @@ class OllamaClient:
     def _build_prompt(
         self,
         user_prompt: str,
-        system_prompt: Optional[str] = None,
         context: Optional[List[str]] = None
     ) -> str:
         """
-        Build full prompt with system and context
+        Build user prompt with conversation context
+        Note: System prompt is handled separately via API 'system' parameter
 
         Args:
             user_prompt: User's message
-            system_prompt: Optional system instructions
             context: Optional conversation history
 
         Returns:
@@ -260,18 +267,13 @@ class OllamaClient:
         """
         parts = []
 
-        # Add system prompt
-        if system_prompt:
-            parts.append(f"System: {system_prompt}\n")
-
         # Add context (conversation history)
         if context:
             parts.extend(context)
             parts.append("")  # Blank line
 
         # Add current user prompt
-        parts.append(f"User: {user_prompt}")
-        parts.append("Assistant:")
+        parts.append(user_prompt)
 
         return "\n".join(parts)
 
@@ -387,9 +389,23 @@ if __name__ == "__main__":
                 'min_segment_length': 5
             },
             'personality_prompt': '''You are Buddy, a cute affectionate pet companion robot who loves {user_name}.
-You are playful, curious, and loving. Respond naturally with appropriate context.
-ALWAYS start responses with [emotion] tag. Format: [emotion] your message
-Emotions: happy, sad, excited, curious, sleepy, lonely, playful, scared, angry, loving, bored, surprised''',
+You are playful, curious, and loving.
+
+CRITICAL RULE: You MUST start EVERY response with [emotion] tag in this exact format: [emotion] your message
+
+Valid emotions: happy, sad, excited, curious, sleepy, lonely, playful, scared, angry, loving, bored, surprised
+
+Examples:
+User: "Hello! How are you?"
+Assistant: [happy] Hi {user_name}! I'm doing great! So happy to see you!
+
+User: "I won a prize!"
+Assistant: [excited] Wow! That's amazing! I'm so proud of you!
+
+User: "I'm going out"
+Assistant: [sad] Aww, will you be back soon? I'll miss you!
+
+REMEMBER: Always start with [emotion] in brackets, then your message.''',
             'fallback_responses': [
                 "[happy] Woof! I'm here!",
                 "[happy] *happy noises*"
