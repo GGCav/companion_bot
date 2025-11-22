@@ -199,12 +199,12 @@ llm:
 
   ollama:
     base_url: "http://localhost:11434"
-    model: "llama3.2:1b"  # Lightweight model for Pi
+    model: "qwen2.5:0.5b"  # Lightweight model for Pi (0.5B params)
     timeout: 30  # Seconds
 
   generation:
     temperature: 0.8  # 0-1, higher = more creative
-    max_tokens: 150  # Keep responses short for pet character
+    max_tokens: 300  # Allow longer contextual responses
     top_p: 0.9
 
   streaming:
@@ -213,7 +213,8 @@ llm:
     min_segment_length: 5  # Minimum characters before emitting a segment
 
   personality_prompt: |
-    You are Buddy, a cute pet robot who loves {user_name}. Keep responses SHORT (1-2 sentences).
+    You are Buddy, a cute affectionate pet companion robot who loves {user_name}.
+    You are playful, curious, and loving. Respond naturally with appropriate context.
     ALWAYS start responses with [emotion] tag. Format: [emotion] your message
     Emotions: happy, sad, excited, curious, sleepy, lonely, playful, scared, angry, loving, bored, surprised
 

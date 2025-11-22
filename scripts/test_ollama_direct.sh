@@ -4,15 +4,15 @@ echo "=== Testing Ollama Directly ==="
 echo ""
 
 echo "1. Testing simple prompt:"
-ollama run llama3.2:1b "Say hello in one sentence"
+ollama run qwen2.5:0.5b "Say hello in one sentence"
 echo ""
 
 echo "2. Testing with emotion tag:"
-ollama run llama3.2:1b "You are Buddy. Respond with [happy] tag at start. Say hello."
+ollama run qwen2.5:0.5b "You are Buddy. Respond with [happy] tag at start. Say hello."
 echo ""
 
 echo "3. Testing with short system prompt:"
-ollama run llama3.2:1b "You are Buddy, a pet robot. Format: [emotion] message. Say hello."
+ollama run qwen2.5:0.5b "You are Buddy, a pet robot. Format: [emotion] message. Say hello."
 echo ""
 
 echo "=== Check Ollama Status ==="

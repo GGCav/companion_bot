@@ -212,7 +212,7 @@ companion_bot/
 
 **Components:**
 - **ollama_client.py** - Ollama API integration *[To be implemented]*
-  - Local LLM inference (llama3.2:1b)
+  - Local LLM inference (qwen2.5:0.5b)
   - Personality prompt templates
   - Context management
   - Timeout handling
@@ -431,7 +431,7 @@ Memory → All Modules (context)
 - **Hardware Interface:** RPi.GPIO, pigpio
 - **Computer Vision:** OpenCV, MediaPipe, face_recognition
 - **Audio:** PyAudio, WebRTC VAD, pyttsx3
-- **LLM:** Ollama (llama3.2:1b)
+- **LLM:** Ollama (qwen2.5:0.5b)
 - **STT:** Whisper (base model)
 - **Display:** Pygame
 - **Database:** SQLite

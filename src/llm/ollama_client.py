@@ -373,12 +373,12 @@ if __name__ == "__main__":
             'provider': 'ollama',
             'ollama': {
                 'base_url': 'http://localhost:11434',
-                'model': 'llama3.2:1b',
+                'model': 'qwen2.5:0.5b',
                 'timeout': 30
             },
             'generation': {
                 'temperature': 0.8,
-                'max_tokens': 150,
+                'max_tokens': 300,
                 'top_p': 0.9
             },
             'streaming': {
@@ -386,7 +386,8 @@ if __name__ == "__main__":
                 'segment_timeout': 2.0,
                 'min_segment_length': 5
             },
-            'personality_prompt': '''You are Buddy, a cute pet robot who loves {user_name}. Keep responses SHORT (1-2 sentences).
+            'personality_prompt': '''You are Buddy, a cute affectionate pet companion robot who loves {user_name}.
+You are playful, curious, and loving. Respond naturally with appropriate context.
 ALWAYS start responses with [emotion] tag. Format: [emotion] your message
 Emotions: happy, sad, excited, curious, sleepy, lonely, playful, scared, angry, loving, bored, surprised''',
             'fallback_responses': [

@@ -55,7 +55,7 @@ The full voice-to-voice conversation system:
 
 2. **Pull the Model**
    ```bash
-   ollama pull llama3.2:1b
+   ollama pull qwen2.5:0.5b
    ```
 
 3. **Start Ollama Service**
@@ -241,12 +241,12 @@ llm:
   provider: "ollama"
   ollama:
     base_url: "http://localhost:11434"
-    model: "llama3.2:1b"  # Lightweight for Raspberry Pi
+    model: "qwen2.5:0.5b"  # Lightweight for Raspberry Pi (0.5B params)
     timeout: 30
 
   generation:
     temperature: 0.8  # Creativity level
-    max_tokens: 150   # Keep responses short
+    max_tokens: 300   # Allow contextual responses
     top_p: 0.9
 
   streaming:
@@ -255,7 +255,8 @@ llm:
     min_segment_length: 5      # Minimum chars before emitting
 
   personality_prompt: |
-    You are Buddy, a cute pet robot who loves {user_name}. Keep responses SHORT (1-2 sentences).
+    You are Buddy, a cute affectionate pet companion robot who loves {user_name}.
+    You are playful, curious, and loving. Respond naturally with appropriate context.
     ALWAYS start responses with [emotion] tag. Format: [emotion] your message
     Emotions: happy, sad, excited, curious, sleepy, lonely, playful, scared, angry, loving, bored, surprised
 
@@ -396,12 +397,12 @@ python scripts/demo_full_conversation.py
 | Component | Time | Notes |
 |-----------|------|-------|
 | Whisper STT | ~5s | Base model |
-| Ollama LLM | ~3-8s | llama3.2:1b |
+| Ollama LLM | ~2-5s | qwen2.5:0.5b |
 | pyttsx3 TTS | ~1-2s | Depends on length |
-| **Total Latency** | **~10-15s** | Full conversation cycle |
+| **Total Latency** | **~8-12s** | Full conversation cycle |
 
 **Optimization Tips**:
-- Use `llama3.2:1b` for faster responses (~2-4s)
+- Use `qwen2.5:0.5b` for faster responses (~2-4s)
 - Use Whisper `tiny` model for faster STT (~2s)
 - Pre-cache common responses
 
@@ -419,10 +420,10 @@ curl http://localhost:11434/api/tags
 ollama serve
 
 # Pull model
-ollama pull llama3.2:1b
+ollama pull qwen2.5:0.5b
 
 # Test generation
-ollama run llama3.2:1b "Say hello"
+ollama run qwen2.5:0.5b "Say hello"
 ```
 
 ### Slow Responses
@@ -432,7 +433,7 @@ ollama run llama3.2:1b "Say hello"
 **Solutions**:
 1. Use smaller model:
    ```yaml
-   model: "llama3.2:1b"  # Faster
+   model: "qwen2.5:0.5b"  # Faster, less memory
    ```
 
 2. Reduce max_tokens:
@@ -579,7 +580,7 @@ history = pipeline.get_conversation_history()
 1. **Install Ollama**:
    ```bash
    curl -fsSL https://ollama.com/install.sh | sh
-   ollama pull llama3.2:1b
+   ollama pull qwen2.5:0.5b
    ```
 
 2. **Test LLM** (text-only):
