@@ -11,9 +11,13 @@ audio:
     format: "int16"  # Audio sample format
 
   output:
-    device_index: null  # null = default speaker
+    device_index: 0  # null = default speaker (wm8960-soundcard configured via /etc/asound.conf)
     sample_rate: 22050  # TTS output rate
     channels: 1
+    # Hardware: wm8960-soundcard (card 0, device 0)
+    # ALSA Path: hw:0,0
+    # Configuration: See config/asound.conf and docs/AUDIO_SETUP.md
+    # To configure: sudo cp config/asound.conf /etc/asound.conf
 
   processing:
     noise_reduction: true
@@ -253,13 +257,16 @@ speech:
       model_path: "models/vosk-model-small-en-us-0.15"
 
   tts:
-    provider: "pyttsx3"  # pyttsx3, gtts
+    provider: "pyttsx3"  # pyttsx3, gtts (pyttsx3 = offline, gtts = online)
 
     pyttsx3:
-      rate: 150  # Words per minute
-      volume: 0.9  # 0-1
+      rate: 150  # Words per minute (base rate, modulated by emotion)
+      volume: 0.9  # 0-1 (software volume, adjust hardware volume with alsamixer)
       voice_id: 0  # Voice index (use test script to find)
-      pitch: 1.5  # Higher pitch for cute pet voice
+      pitch: 1.5  # Higher pitch for cute pet voice (limited support on Linux)
+      # Hardware Output: wm8960-soundcard via system default device
+      # Emotion Modulation: TTSEngine applies rate/pitch/volume multipliers per emotion
+      # Test: python scripts/test_tts_hardware.py
 
     gtts:
       language: "en"
