@@ -260,7 +260,7 @@ speech:
     provider: "piper"  # "piper" (neural, high quality) or "pyttsx3" (robotic, low quality)
 
     piper:
-      binary_path: "/home/pi/piper/piper"  # Path to piper binary
+      binary_path: "/home/pi/piper/piper/piper"  # Path to piper binary
       model_path: "/home/pi/piper/en_US-amy-medium.onnx"  # Path to voice model
       length_scale: 1.0  # Speech rate (1.0 = normal, 1.2 = slower, 0.8 = faster)
       temp_dir: "/tmp"  # Temporary directory for WAV files
