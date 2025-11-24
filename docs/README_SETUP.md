@@ -557,7 +557,7 @@ sudo raspi-config  # Interface Options → I2C
 
 3. **Use Lightweight Models:**
    - Whisper: `tiny` instead of `base`
-   - Ollama: `llama3.2:3b` instead of larger models
+   - Ollama: `qwen2.5:0.5b` instead of larger models
 
 4. **Optimize Camera:**
    - Lower resolution (640x480 instead of 1080p)

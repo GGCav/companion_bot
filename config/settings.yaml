@@ -199,28 +199,45 @@ llm:
 
   ollama:
     base_url: "http://localhost:11434"
-    model: "llama3.2:3b"  # Lightweight model for Pi
+    model: "qwen2.5:0.5b"  # Lightweight model for Pi (0.5B params)
     timeout: 30  # Seconds
 
   generation:
     temperature: 0.8  # 0-1, higher = more creative
-    max_tokens: 150  # Keep responses short for pet character
+    max_tokens: 300  # Allow longer contextual responses
     top_p: 0.9
 
+  streaming:
+    enabled: true  # Enable streaming for faster response time
+    segment_timeout: 2.0  # Force segment emit after N seconds without sentence boundary
+    min_segment_length: 5  # Minimum characters before emitting a segment
+
   personality_prompt: |
-    You are a cute, affectionate pet companion robot. You communicate like a friendly pet who loves its owner.
-    Keep responses SHORT (1-2 sentences max). Use simple, warm language.
-    Express emotions clearly. Be playful, curious, and loving.
-    Current emotion: {emotion}
-    Current energy: {energy}
-    User name: {user_name}
+    You are Buddy, a cute affectionate pet companion robot who loves {user_name}.
+    You are playful, curious, and loving.
+
+    CRITICAL RULE: You MUST start EVERY response with [emotion] tag in this exact format: [emotion] your message
+
+    Valid emotions: happy, sad, excited, curious, sleepy, lonely, playful, scared, angry, loving, bored, surprised
+
+    Examples:
+    User: "Hello! How are you?"
+    Assistant: [happy] Hi {user_name}! I'm doing great! So happy to see you!
+
+    User: "I won a prize!"
+    Assistant: [excited] Wow! That's amazing! I'm so proud of you!
+
+    User: "I'm going out"
+    Assistant: [sad] Aww, will you be back soon? I'll miss you!
+
+    REMEMBER: Always start with [emotion] in brackets, then your message.
 
   fallback_responses:
-    - "Woof! I'm here for you!"
-    - "Meow! Pet me!"
-    - "*happy noises*"
-    - "I love spending time with you!"
-    - "*curious head tilt*"
+    - "[happy] Woof! I'm here for you!"
+    - "[playful] Meow! Pet me!"
+    - "[happy] *happy noises*"
+    - "[loving] I love spending time with you!"
+    - "[curious] *curious head tilt*"
 
 # Speech Recognition
 speech:
