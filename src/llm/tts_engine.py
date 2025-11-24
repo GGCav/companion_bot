@@ -36,10 +36,23 @@ class TTSEngine:
         # Initialize base TTS engine
         self.tts = BaseTTS(config)
 
-        # Base voice settings (from config)
-        self.base_rate = self.tts_config[self.provider]['rate']
-        self.base_volume = self.tts_config[self.provider]['volume']
-        self.base_pitch = self.tts_config[self.provider].get('pitch', 1.0)
+        # Base voice settings (provider-specific)
+        if self.provider == 'piper':
+            # Piper uses length_scale (1.0 = normal) instead of rate (WPM)
+            self.base_rate = self.tts_config['piper'].get('length_scale', 1.0)
+            self.base_volume = 0.9  # Default volume for pygame playback
+            self.base_pitch = 1.0  # Piper doesn't support pitch control
+        elif self.provider == 'pyttsx3':
+            # pyttsx3 uses words per minute for rate
+            self.base_rate = self.tts_config['pyttsx3']['rate']
+            self.base_volume = self.tts_config['pyttsx3']['volume']
+            self.base_pitch = self.tts_config['pyttsx3'].get('pitch', 1.0)
+        else:
+            # Fallback defaults
+            self.base_rate = 150
+            self.base_volume = 0.9
+            self.base_pitch = 1.0
+            logger.warning(f"Unknown TTS provider: {self.provider}, using default settings")
 
         # Emotion-to-voice mappings
         self.emotion_modulations = {
@@ -360,7 +373,7 @@ if __name__ == "__main__":
 
     # Show stats
     stats = tts.get_statistics()
-    print(f"\nStatistics:")
+    print("\nStatistics:")
     print(f"  Total utterances: {stats['total_utterances']}")
     print(f"  Provider: {stats['provider']}")
 
