@@ -257,7 +257,18 @@ speech:
       model_path: "models/vosk-model-small-en-us-0.15"
 
   tts:
-    provider: "pyttsx3"  # pyttsx3, gtts (pyttsx3 = offline, gtts = online)
+    provider: "piper"  # "piper" (neural, high quality) or "pyttsx3" (robotic, low quality)
+
+    piper:
+      binary_path: "/home/pi/piper/piper"  # Path to piper binary
+      model_path: "/home/pi/piper/en_US-amy-medium.onnx"  # Path to voice model
+      length_scale: 1.0  # Speech rate (1.0 = normal, 1.2 = slower, 0.8 = faster)
+      temp_dir: "/tmp"  # Temporary directory for WAV files
+      sample_rate: 22050  # Audio sample rate
+      # Hardware Output: wm8960-soundcard via pygame.mixer
+      # Emotion Modulation: TTSEngine adjusts length_scale for rate changes
+      # Note: No pitch control available (limitation of Piper)
+      # Test: python scripts/test_tts_simple.py
 
     pyttsx3:
       rate: 150  # Words per minute (base rate, modulated by emotion)

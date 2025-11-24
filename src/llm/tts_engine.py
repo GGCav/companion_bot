@@ -203,10 +203,20 @@ class TTSEngine:
         new_volume = self.base_volume * modulation['volume_mult']
         # Note: pitch modulation depends on TTS engine capabilities
 
-        # Apply to engine
+        # Apply to engine (use factory methods for provider compatibility)
         try:
-            self.tts.engine.setProperty('rate', new_rate)
-            self.tts.engine.setProperty('volume', min(1.0, new_volume))
+            # For Piper: rate becomes length_scale (inverse: slower = higher value)
+            # For pyttsx3: rate is words per minute
+            if hasattr(self.tts, 'provider_name') and self.tts.provider_name == 'piper':
+                # Piper uses length_scale: 1.0 = normal, 1.2 = slower, 0.8 = faster
+                # Invert rate multiplier for Piper's length_scale
+                length_scale = 1.0 / modulation['rate_mult']
+                self.tts.set_rate(length_scale)
+            else:
+                # pyttsx3 uses words per minute
+                self.tts.set_rate(new_rate)
+
+            self.tts.set_volume(min(1.0, new_volume))
 
             self.current_emotion = emotion
             logger.debug(f"Voice set to {emotion}: rate={new_rate}, volume={new_volume:.2f}")
@@ -217,8 +227,13 @@ class TTSEngine:
     def _reset_voice(self):
         """Reset voice to base parameters"""
         try:
-            self.tts.engine.setProperty('rate', self.base_rate)
-            self.tts.engine.setProperty('volume', self.base_volume)
+            # Use factory methods instead of direct engine access
+            if hasattr(self.tts, 'provider_name') and self.tts.provider_name == 'piper':
+                self.tts.set_rate(1.0)  # Piper: 1.0 = normal length_scale
+            else:
+                self.tts.set_rate(self.base_rate)  # pyttsx3: words per minute
+
+            self.tts.set_volume(self.base_volume)
 
             self.current_emotion = None
             logger.debug("Voice reset to base parameters")

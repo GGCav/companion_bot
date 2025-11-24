@@ -164,13 +164,10 @@ def test_statistics(tts):
 
     stats = tts.get_statistics()
     print(f"\n📊 Performance Stats:")
-    print(f"   Total speeches: {stats['total_speeches']}")
-    print(f"   Currently speaking: {stats['is_speaking']}")
-
-    if stats['emotion_counts']:
-        print(f"\n🎭 Emotion Usage:")
-        for emotion, count in sorted(stats['emotion_counts'].items(), key=lambda x: x[1], reverse=True):
-            print(f"   {emotion:12s}: {count:3d} times")
+    print(f"   Total utterances: {stats['total_utterances']}")
+    print(f"   Total duration: {stats['total_duration']:.2f}s")
+    print(f"   Current emotion: {stats['current_emotion'] or 'neutral'}")
+    print(f"   Provider: {stats['provider']}")
 
 
 def main():
