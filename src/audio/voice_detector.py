@@ -63,7 +63,7 @@ class VoiceActivityDetector:
 
         # Check amplitude threshold (with adaptive noise floor)
         # Use 2x noise floor as threshold for amplitude
-        amplitude_threshold = max(self.noise_floor * 2.0, 200)  # Minimum threshold of 600
+        amplitude_threshold = max(self.noise_floor * 2.0, 150)  # Minimum threshold of 600
         amplitude_check = amplitude > amplitude_threshold
 
         # Use WebRTC VAD for confirmation (now works with 44100 Hz via resampling)
