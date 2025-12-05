@@ -121,7 +121,7 @@ def main():
         logger.info("EmotionDisplay initialized successfully")
     except Exception as e:
         logger.error(f"Failed to initialize display: {e}")
-        logger.error("Make sure emotion sprites exist in src/Display/")
+        logger.error("Make sure emotion sprites exist in src/display/")
         return 1
 
     # Start display thread

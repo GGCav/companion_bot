@@ -4,7 +4,7 @@ import sys
 import glob
 
 SCREEN_SIZE = (320, 240)
-IMAGE_DIR = "src/Display"
+IMAGE_DIR = "src/display"
 TOGGLE_MS = 1500  # Frame toggle interval (milliseconds)
 
 def load_emotions(image_dir):

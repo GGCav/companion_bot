@@ -59,7 +59,7 @@ class EmotionDisplay:
 
         # Extract configuration
         screen_size = tuple(self.display_config.get('resolution', [320, 240]))
-        image_dir = self.display_config.get('image_dir', 'src/Display')
+        image_dir = self.display_config.get('image_dir', 'src/display')
         self.fps = self.display_config.get('fps', 60)
         self.gpio_enabled = self.display_config.get('gpio', {}).get('enabled', True)
         self.gpio_exit_pin = self.display_config.get('gpio', {}).get('exit_button_pin', 27)

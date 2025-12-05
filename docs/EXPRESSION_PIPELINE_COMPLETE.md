@@ -178,7 +178,7 @@ expression:
     framebuffer: "/dev/fb1"        # piTFT device
     resolution: [320, 240]          # Screen size
     fps: 60                         # Animation frame rate
-    image_dir: "src/Display"        # Sprite directory
+    image_dir: "src/display"        # Sprite directory
 
     transitions:
       enabled: true
@@ -301,10 +301,10 @@ self.emotion_display.cleanup()
 **Solution**:
 ```bash
 # Check image directory
-ls -lh ~/companion_bot/src/Display/
+ls -lh ~/companion_bot/src/display/
 
 # Should show 24 PNG files
-# If missing, sprites need to be added to src/Display/
+# If missing, sprites need to be added to src/display/
 ```
 
 ### piTFT Not Detected
