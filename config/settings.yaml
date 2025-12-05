@@ -142,7 +142,7 @@ motors:
 expression:
   display:
     enabled: true
-    framebuffer: "/dev/fb1"  # piTFT framebuffer device
+    framebuffer: "/dev/fb0"  # piTFT framebuffer device
     resolution: [320, 240]   # piTFT resolution
     fps: 60                  # Frame rate for smooth animations
     image_dir: "src/display" # Emotion sprite directory

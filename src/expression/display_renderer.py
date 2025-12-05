@@ -20,7 +20,7 @@ class DisplayRenderer:
     """
 
     def __init__(self, screen_size: Tuple[int, int] = (320, 240),
-                 framebuffer: str = "/dev/fb1",
+                 framebuffer: str = "/dev/fb0",
                  image_dir: str = "src/display"):
         """
         Initialize display renderer

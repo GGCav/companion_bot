@@ -46,13 +46,13 @@ class EmotionDisplay:
     Manages display lifecycle, state machine, threading, and GPIO
     """
 
-    def __init__(self, config: dict, framebuffer: str = "/dev/fb1"):
+    def __init__(self, config: dict, framebuffer: str = "/dev/fb0"):
         """
         Initialize emotion display
 
         Args:
             config: Configuration dictionary from settings.yaml
-            framebuffer: Framebuffer device path (default: /dev/fb1 for piTFT)
+            framebuffer: Framebuffer device path (default: /dev/fb0 for piTFT)
         """
         self.config = config
         self.display_config = config.get('expression', {}).get('display', {})

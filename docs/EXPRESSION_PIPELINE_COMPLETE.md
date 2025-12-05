@@ -157,7 +157,7 @@ Uses command queue pattern from camera.py
 ### 5. Hardware Support
 
 **piTFT (Production)**:
-- Framebuffer: `/dev/fb1`
+- Framebuffer: `/dev/fb0`
 - Resolution: 320×240
 - GPIO exit button: Pin 27 (BCM mode)
 
@@ -175,7 +175,7 @@ Uses command queue pattern from camera.py
 expression:
   display:
     enabled: true
-    framebuffer: "/dev/fb1"        # piTFT device
+    framebuffer: "/dev/fb0"        # piTFT device
     resolution: [320, 240]          # Screen size
     fps: 60                         # Animation frame rate
     image_dir: "src/display"        # Sprite directory
@@ -312,7 +312,7 @@ ls -lh ~/companion_bot/src/display/
 **Error**: "piTFT initialization failed"
 
 **Solution**:
-- Verify framebuffer exists: `ls /dev/fb1`
+- Verify framebuffer exists: `ls /dev/fb0`
 - Check piTFT drivers installed
 - Falls back to window mode automatically
 
