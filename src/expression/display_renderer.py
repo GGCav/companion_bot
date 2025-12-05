@@ -54,6 +54,7 @@ class DisplayRenderer:
             os.putenv('SDL_NOMOUSE', '1')  # Disable mouse cursor
 
             pygame.init()
+            pygame.mouse.set_visible(False)
             self.screen = pygame.display.set_mode(self.screen_size)
             logger.info(f"Initialized piTFT display at {self.framebuffer}")
 
