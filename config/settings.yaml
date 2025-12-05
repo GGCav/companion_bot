@@ -138,6 +138,28 @@ motors:
     right_motor_pins: [16, 20]
     speed_default: 50  # PWM percentage (0-100)
 
+# Expression Display Configuration (Emotion Pipeline)
+expression:
+  display:
+    enabled: true
+    framebuffer: "/dev/fb1"  # piTFT framebuffer device
+    resolution: [320, 240]   # piTFT resolution
+    fps: 60                  # Frame rate for smooth animations
+    image_dir: "src/Display" # Emotion sprite directory
+
+    transitions:
+      enabled: true
+      default_duration: 0.5  # Transition duration in seconds
+      algorithm: "linear"    # Linear interpolation for alpha blending
+
+    speaking:
+      toggle_interval: 0.15  # Frame toggle interval for speaking animation (seconds)
+
+    gpio:
+      enabled: true
+      exit_button_pin: 27    # GPIO pin for exit button (BCM mode)
+      button_debounce: 0.1   # Debounce time in seconds
+
 # Display Configuration - TFT
 display:
   enabled: true

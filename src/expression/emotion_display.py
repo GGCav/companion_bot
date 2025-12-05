@@ -1,0 +1,346 @@
+"""
+Emotion Display Controller for Companion Bot
+Main controller for expression pipeline with threading and state management
+"""
+
+import pygame
+import threading
+import queue
+import time
+import logging
+from typing import Optional
+
+try:
+    import RPi.GPIO as GPIO
+    GPIO_AVAILABLE = True
+except ImportError:
+    GPIO_AVAILABLE = False
+    logging.warning("RPi.GPIO not available - GPIO features disabled")
+
+from .display_renderer import DisplayRenderer
+from .transition_controller import TransitionController
+
+logger = logging.getLogger(__name__)
+
+
+class DisplayState:
+    """Container for display state"""
+    def __init__(self):
+        # Priority states
+        self.is_listening: bool = False
+        self.is_speaking: bool = False
+
+        # Emotion state
+        self.current_emotion: str = "happy"
+        self.target_emotion: Optional[str] = None
+
+        # Speaking animation state
+        self.speaking_frame_toggle: bool = False
+        self.last_toggle_time: float = 0.0
+        self.toggle_interval: float = 0.15  # 150ms toggle (from test_emotion_display.py)
+
+
+class EmotionDisplay:
+    """
+    Main emotion display controller
+    Manages display lifecycle, state machine, threading, and GPIO
+    """
+
+    def __init__(self, config: dict, framebuffer: str = "/dev/fb1"):
+        """
+        Initialize emotion display
+
+        Args:
+            config: Configuration dictionary from settings.yaml
+            framebuffer: Framebuffer device path (default: /dev/fb1 for piTFT)
+        """
+        self.config = config
+        self.display_config = config.get('expression', {}).get('display', {})
+
+        # Extract configuration
+        screen_size = tuple(self.display_config.get('resolution', [320, 240]))
+        image_dir = self.display_config.get('image_dir', 'src/Display')
+        self.fps = self.display_config.get('fps', 60)
+        self.gpio_enabled = self.display_config.get('gpio', {}).get('enabled', True)
+        self.gpio_exit_pin = self.display_config.get('gpio', {}).get('exit_button_pin', 27)
+
+        # Initialize components
+        self.renderer = DisplayRenderer(
+            screen_size=screen_size,
+            framebuffer=framebuffer,
+            image_dir=image_dir
+        )
+        self.transition = TransitionController()
+        self.state = DisplayState()
+
+        # Threading components
+        self.is_running = False
+        self.display_thread: Optional[threading.Thread] = None
+        self.command_queue = queue.Queue()
+        self.state_lock = threading.Lock()
+
+        # Performance tracking
+        self.clock = pygame.time.Clock()
+
+        # Initialize GPIO if available
+        self._init_gpio()
+
+        logger.info("EmotionDisplay initialized")
+
+    def _init_gpio(self):
+        """Initialize GPIO for exit button (if available)"""
+        if not GPIO_AVAILABLE or not self.gpio_enabled:
+            logger.info("GPIO disabled")
+            return
+
+        try:
+            GPIO.setmode(GPIO.BCM)
+            GPIO.setup(self.gpio_exit_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+            logger.info(f"GPIO initialized - exit button on pin {self.gpio_exit_pin}")
+        except Exception as e:
+            logger.error(f"GPIO initialization failed: {e}")
+
+    def start(self):
+        """Start the display loop in a dedicated thread"""
+        if self.is_running:
+            logger.warning("Display already running")
+            return
+
+        self.is_running = True
+        self.display_thread = threading.Thread(target=self._display_loop, daemon=True)
+        self.display_thread.start()
+        logger.info("Display thread started")
+
+    def stop(self):
+        """Stop the display loop gracefully"""
+        if not self.is_running:
+            return
+
+        self.is_running = False
+        if self.display_thread:
+            self.display_thread.join(timeout=2.0)
+        logger.info("Display thread stopped")
+
+    def _display_loop(self):
+        """
+        Main display loop - runs at configured FPS (default 60)
+        Pattern from camera.py and two_collide.py
+        """
+        logger.info(f"Display loop starting at {self.fps} FPS")
+        last_time = time.time()
+
+        while self.is_running:
+            # Calculate delta time
+            current_time = time.time()
+            delta_time = current_time - last_time
+            last_time = current_time
+
+            # Process command queue
+            self._process_commands()
+
+            # Check GPIO exit button
+            if self._check_gpio_exit():
+                logger.info("GPIO exit button pressed")
+                self.is_running = False
+                break
+
+            # Update state
+            self._update_state(delta_time)
+
+            # Render frame
+            self._render_frame()
+
+            # Handle pygame events
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    self.is_running = False
+
+            # Maintain target FPS
+            self.clock.tick(self.fps)
+
+        logger.info("Display loop exited")
+
+    def _process_commands(self):
+        """Process commands from the command queue"""
+        try:
+            while True:
+                cmd = self.command_queue.get_nowait()
+                self._execute_command(cmd)
+        except queue.Empty:
+            pass
+
+    def _execute_command(self, cmd: dict):
+        """
+        Execute a command
+
+        Args:
+            cmd: Command dictionary with 'type' and parameters
+        """
+        cmd_type = cmd.get('type')
+
+        with self.state_lock:
+            if cmd_type == 'SET_EMOTION':
+                emotion = cmd.get('emotion', 'happy')
+                duration = cmd.get('duration', 0.5)
+                self._start_emotion_transition(emotion, duration)
+
+            elif cmd_type == 'SET_LISTENING':
+                active = cmd.get('active', False)
+                self.state.is_listening = active
+                logger.debug(f"Listening: {active}")
+
+            elif cmd_type == 'SET_SPEAKING':
+                active = cmd.get('active', False)
+                self.state.is_speaking = active
+                if not active:
+                    self.state.speaking_frame_toggle = False
+                logger.debug(f"Speaking: {active}")
+
+    def _start_emotion_transition(self, emotion: str, duration: float):
+        """Start transition to new emotion"""
+        if emotion == self.state.current_emotion and not self.transition.is_transitioning():
+            logger.debug(f"Already showing {emotion}, skipping transition")
+            return
+
+        self.transition.start_transition(
+            from_emotion=self.state.current_emotion,
+            to_emotion=emotion,
+            duration=duration
+        )
+        self.state.target_emotion = emotion
+
+    def _update_state(self, delta_time: float):
+        """
+        Update display state each frame
+
+        Args:
+            delta_time: Time since last update (seconds)
+        """
+        with self.state_lock:
+            # Update transition progress
+            if self.transition.is_transitioning():
+                from_em, to_em, alpha = self.transition.update(delta_time)
+                # Update current emotion when transition completes
+                if not self.transition.is_transitioning():
+                    self.state.current_emotion = to_em
+                    self.state.target_emotion = None
+
+            # Update speaking animation toggle
+            if self.state.is_speaking or self.state.is_listening:
+                current_time = time.time()
+                if current_time - self.state.last_toggle_time >= self.state.toggle_interval:
+                    self.state.speaking_frame_toggle = not self.state.speaking_frame_toggle
+                    self.state.last_toggle_time = current_time
+
+    def _render_frame(self):
+        """
+        Render current frame based on state priority
+        Priority: LISTENING > SPEAKING > EMOTION + TRANSITION
+        """
+        with self.state_lock:
+            # Priority 1: Listening state
+            if self.state.is_listening:
+                frame = self.renderer.get_listening_frame()
+                if frame:
+                    self.renderer.render_frame(frame)
+                    return
+
+            # Priority 2: Speaking animation
+            if self.state.is_speaking:
+                emotion = self.state.current_emotion
+                frame = self.renderer.get_emotion_frame(emotion, speaking=self.state.speaking_frame_toggle)
+                if frame:
+                    self.renderer.render_frame(frame)
+                    return
+
+            # Priority 3: Emotion display with transitions
+            if self.transition.is_transitioning():
+                from_em, to_em, alpha = self.transition.update(0)  # Just get current values
+                from_frame = self.renderer.get_emotion_frame(from_em, speaking=False)
+                to_frame = self.renderer.get_emotion_frame(to_em, speaking=False)
+
+                if from_frame and to_frame:
+                    blended = self.renderer.create_blended_frame(from_frame, to_frame, alpha)
+                    self.renderer.render_frame(blended)
+                    return
+
+            # Default: Show current emotion
+            frame = self.renderer.get_emotion_frame(self.state.current_emotion, speaking=False)
+            if frame:
+                self.renderer.render_frame(frame)
+
+    def _check_gpio_exit(self) -> bool:
+        """
+        Check if GPIO exit button is pressed
+
+        Returns:
+            True if button pressed, False otherwise
+        """
+        if not GPIO_AVAILABLE or not self.gpio_enabled:
+            return False
+
+        try:
+            return not GPIO.input(self.gpio_exit_pin)  # Active low (pressed = 0)
+        except Exception as e:
+            logger.error(f"GPIO read error: {e}")
+            return False
+
+    # Public API methods (thread-safe)
+
+    def set_emotion(self, emotion: str, transition_duration: float = 0.5):
+        """
+        Set display emotion with smooth transition
+
+        Args:
+            emotion: Emotion name (e.g., 'happy', 'sad', 'excited')
+            transition_duration: Transition duration in seconds
+        """
+        self.command_queue.put({
+            'type': 'SET_EMOTION',
+            'emotion': emotion,
+            'duration': transition_duration
+        })
+
+    def set_listening(self, active: bool):
+        """
+        Set listening state
+
+        Args:
+            active: True to show listening animation, False to return to emotion
+        """
+        self.command_queue.put({
+            'type': 'SET_LISTENING',
+            'active': active
+        })
+
+    def set_speaking(self, active: bool):
+        """
+        Set speaking state
+
+        Args:
+            active: True to enable speaking animation, False to stop
+        """
+        self.command_queue.put({
+            'type': 'SET_SPEAKING',
+            'active': active
+        })
+
+    def cleanup(self):
+        """Clean up display resources and GPIO"""
+        logger.info("Cleaning up emotion display...")
+
+        # Stop display loop
+        self.stop()
+
+        # Clean up renderer
+        self.renderer.cleanup()
+
+        # Clean up GPIO
+        if GPIO_AVAILABLE and self.gpio_enabled:
+            try:
+                GPIO.cleanup()
+                logger.info("GPIO cleanup complete")
+            except Exception as e:
+                logger.error(f"GPIO cleanup error: {e}")
+
+        logger.info("EmotionDisplay cleanup complete")
