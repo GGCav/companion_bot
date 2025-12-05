@@ -8,6 +8,10 @@ import pyttsx3
 import logging
 import queue
 import threading
+import subprocess
+import tempfile
+import uuid
+import time
 from typing import Optional
 from pathlib import Path
 
@@ -130,8 +134,219 @@ class AudioOutput:
         logger.info("Audio output cleanup complete")
 
 
-class TextToSpeech:
-    """Text-to-speech handler using pyttsx3"""
+class PiperTTSProvider:
+    """Text-to-speech provider using Piper binary"""
+
+    def __init__(self, config: dict):
+        """
+        Initialize Piper TTS provider
+
+        Args:
+            config: Configuration dictionary from settings.yaml
+        """
+        self.config = config
+        self.piper_config = config['speech']['tts']['piper']
+
+        # Piper binary and model paths
+        self.piper_binary = self.piper_config['binary_path']
+        self.model_path = self.piper_config['model_path']
+        self.length_scale = self.piper_config.get('length_scale', 1.0)
+        self.temp_dir = self.piper_config.get('temp_dir', '/tmp')
+
+        # Verify piper binary exists
+        if not Path(self.piper_binary).exists():
+            raise FileNotFoundError(f"Piper binary not found: {self.piper_binary}")
+
+        # Verify model file exists
+        if not Path(self.model_path).exists():
+            raise FileNotFoundError(f"Piper model not found: {self.model_path}")
+
+        # Initialize pygame mixer for audio playback
+        pygame.mixer.init()
+
+        # Speech queue for async TTS
+        self.speech_queue = queue.Queue()
+        self.is_speaking = False
+        self.speech_thread: Optional[threading.Thread] = None
+        self.current_channel = None
+
+        logger.info(f"Piper TTS initialized with model: {self.model_path}")
+
+    def speak(self, text: str, wait: bool = False):
+        """
+        Convert text to speech and play
+
+        Args:
+            text: Text to speak
+            wait: If True, wait for speech to finish
+        """
+        try:
+            if wait:
+                self._synthesize_and_play(text, wait=True)
+            else:
+                self.speak_async(text)
+
+            logger.info(f"Speaking: {text[:50]}...")
+
+        except Exception as e:
+            logger.error(f"Piper TTS error: {e}")
+
+    def _synthesize_and_play(self, text: str, wait: bool = False):
+        """
+        Synthesize speech with Piper and play the audio
+
+        Args:
+            text: Text to synthesize
+            wait: If True, wait for playback to finish
+        """
+        # Generate unique temporary WAV file
+        temp_wav = Path(self.temp_dir) / f"piper_{uuid.uuid4()}.wav"
+
+        try:
+            # Call Piper binary to synthesize speech
+            cmd = [
+                self.piper_binary,
+                '--model', self.model_path,
+                '--length_scale', str(self.length_scale),
+                '--output_file', str(temp_wav)
+            ]
+
+            # Run Piper with text input via stdin
+            subprocess.run(
+                cmd,
+                input=text,
+                text=True,
+                capture_output=True,
+                check=True,
+                timeout=10
+            )
+
+            # Play the generated WAV file
+            if temp_wav.exists():
+                sound = pygame.mixer.Sound(str(temp_wav))
+                self.current_channel = sound.play()
+
+                if wait and self.current_channel:
+                    # Wait for playback to finish
+                    while self.current_channel.get_busy():
+                        pygame.time.wait(100)
+
+                # Clean up temporary file after a delay
+                if not wait:
+                    # Schedule cleanup
+                    threading.Timer(2.0, lambda: self._cleanup_wav(temp_wav)).start()
+                else:
+                    self._cleanup_wav(temp_wav)
+
+        except subprocess.TimeoutExpired:
+            logger.error("Piper synthesis timed out")
+            self._cleanup_wav(temp_wav)
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Piper synthesis failed: {e.stderr}")
+            self._cleanup_wav(temp_wav)
+        except Exception as e:
+            logger.error(f"Error synthesizing speech: {e}")
+            self._cleanup_wav(temp_wav)
+
+    def _cleanup_wav(self, wav_path: Path):
+        """Clean up temporary WAV file"""
+        try:
+            if wav_path.exists():
+                wav_path.unlink()
+        except Exception as e:
+            logger.debug(f"Could not clean up WAV file: {e}")
+
+    def speak_async(self, text: str):
+        """
+        Speak text asynchronously in background
+
+        Args:
+            text: Text to speak
+        """
+        self.speech_queue.put(text)
+
+        if not self.is_speaking:
+            self._start_speech_thread()
+
+    def _start_speech_thread(self):
+        """Start background thread for TTS"""
+        if self.speech_thread and self.speech_thread.is_alive():
+            return
+
+        self.is_speaking = True
+        self.speech_thread = threading.Thread(target=self._speech_worker)
+        self.speech_thread.daemon = True
+        self.speech_thread.start()
+
+    def _speech_worker(self):
+        """Background worker for TTS queue"""
+        while self.is_speaking or not self.speech_queue.empty():
+            try:
+                text = self.speech_queue.get(timeout=0.5)
+
+                # Synthesize and play
+                self._synthesize_and_play(text, wait=True)
+
+                self.speech_queue.task_done()
+
+            except queue.Empty:
+                continue
+            except Exception as e:
+                logger.error(f"Speech worker error: {e}")
+
+        self.is_speaking = False
+
+    def stop_speaking(self):
+        """Stop current speech"""
+        try:
+            # Stop pygame playback
+            pygame.mixer.stop()
+
+            # Clear queue
+            while not self.speech_queue.empty():
+                try:
+                    self.speech_queue.get_nowait()
+                except queue.Empty:
+                    break
+
+            logger.info("Speech stopped")
+
+        except Exception as e:
+            logger.error(f"Error stopping speech: {e}")
+
+    def set_rate(self, rate: float):
+        """
+        Set speech rate (via length_scale)
+
+        Args:
+            rate: Speech rate multiplier (1.0 = normal, >1.0 = slower, <1.0 = faster)
+        """
+        self.length_scale = rate
+
+    def set_volume(self, volume: float):
+        """
+        Set speech volume
+
+        Args:
+            volume: Volume level (0.0 to 1.0)
+        """
+        pygame.mixer.music.set_volume(volume)
+
+    def cleanup(self):
+        """Clean up TTS resources"""
+        self.is_speaking = False
+        self.stop_speaking()
+
+        if self.speech_thread:
+            self.speech_thread.join(timeout=2.0)
+
+        pygame.mixer.quit()
+
+        logger.info("Piper TTS cleanup complete")
+
+
+class PyttxTTSProvider:
+    """Text-to-speech provider using pyttsx3"""
 
     def __init__(self, config: dict):
         """
@@ -240,6 +455,24 @@ class TextToSpeech:
         except Exception as e:
             logger.error(f"Error stopping speech: {e}")
 
+    def set_rate(self, rate: int):
+        """
+        Set speech rate
+
+        Args:
+            rate: Words per minute
+        """
+        self.engine.setProperty('rate', rate)
+
+    def set_volume(self, volume: float):
+        """
+        Set speech volume
+
+        Args:
+            volume: Volume level (0.0 to 1.0)
+        """
+        self.engine.setProperty('volume', volume)
+
     def list_voices(self):
         """List available TTS voices"""
         voices = self.engine.getProperty('voices')
@@ -264,6 +497,76 @@ class TextToSpeech:
             self.speech_thread.join(timeout=2.0)
 
         logger.info("TTS cleanup complete")
+
+
+class TextToSpeech:
+    """
+    TTS Factory - Creates appropriate TTS provider based on configuration
+    Maintains backward compatibility with existing code
+    """
+
+    def __init__(self, config: dict):
+        """
+        Initialize TTS with configured provider
+
+        Args:
+            config: Configuration dictionary from settings.yaml
+        """
+        self.config = config
+        provider_name = config['speech']['tts'].get('provider', 'pyttsx3')
+
+        # Create appropriate provider
+        if provider_name == 'piper':
+            logger.info("Initializing Piper TTS provider")
+            self.provider = PiperTTSProvider(config)
+            self.engine = None  # Piper doesn't expose engine object
+        elif provider_name == 'pyttsx3':
+            logger.info("Initializing pyttsx3 TTS provider")
+            self.provider = PyttxTTSProvider(config)
+            self.engine = self.provider.engine  # Expose engine for backward compatibility
+        else:
+            raise ValueError(f"Unknown TTS provider: {provider_name}. Use 'piper' or 'pyttsx3'")
+
+        self.provider_name = provider_name
+
+    def speak(self, text: str, wait: bool = False):
+        """Delegate to provider"""
+        return self.provider.speak(text, wait)
+
+    def speak_async(self, text: str):
+        """Delegate to provider"""
+        return self.provider.speak_async(text)
+
+    def stop_speaking(self):
+        """Delegate to provider"""
+        return self.provider.stop_speaking()
+
+    def set_rate(self, rate: float):
+        """Delegate to provider (behavior differs by provider)"""
+        if hasattr(self.provider, 'set_rate'):
+            return self.provider.set_rate(rate)
+
+    def set_volume(self, volume: float):
+        """Delegate to provider"""
+        if hasattr(self.provider, 'set_volume'):
+            return self.provider.set_volume(volume)
+
+    def list_voices(self):
+        """List available voices (pyttsx3 only)"""
+        if hasattr(self.provider, 'list_voices'):
+            return self.provider.list_voices()
+        else:
+            logger.warning(f"{self.provider_name} does not support list_voices()")
+            return []
+
+    def cleanup(self):
+        """Delegate to provider"""
+        return self.provider.cleanup()
+
+    @property
+    def is_speaking(self):
+        """Check if currently speaking"""
+        return self.provider.is_speaking
 
 
 if __name__ == "__main__":

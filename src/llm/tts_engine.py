@@ -36,10 +36,23 @@ class TTSEngine:
         # Initialize base TTS engine
         self.tts = BaseTTS(config)
 
-        # Base voice settings (from config)
-        self.base_rate = self.tts_config[self.provider]['rate']
-        self.base_volume = self.tts_config[self.provider]['volume']
-        self.base_pitch = self.tts_config[self.provider].get('pitch', 1.0)
+        # Base voice settings (provider-specific)
+        if self.provider == 'piper':
+            # Piper uses length_scale (1.0 = normal) instead of rate (WPM)
+            self.base_rate = self.tts_config['piper'].get('length_scale', 1.0)
+            self.base_volume = 0.9  # Default volume for pygame playback
+            self.base_pitch = 1.0  # Piper doesn't support pitch control
+        elif self.provider == 'pyttsx3':
+            # pyttsx3 uses words per minute for rate
+            self.base_rate = self.tts_config['pyttsx3']['rate']
+            self.base_volume = self.tts_config['pyttsx3']['volume']
+            self.base_pitch = self.tts_config['pyttsx3'].get('pitch', 1.0)
+        else:
+            # Fallback defaults
+            self.base_rate = 150
+            self.base_volume = 0.9
+            self.base_pitch = 1.0
+            logger.warning(f"Unknown TTS provider: {self.provider}, using default settings")
 
         # Emotion-to-voice mappings
         self.emotion_modulations = {
@@ -203,10 +216,20 @@ class TTSEngine:
         new_volume = self.base_volume * modulation['volume_mult']
         # Note: pitch modulation depends on TTS engine capabilities
 
-        # Apply to engine
+        # Apply to engine (use factory methods for provider compatibility)
         try:
-            self.tts.engine.setProperty('rate', new_rate)
-            self.tts.engine.setProperty('volume', min(1.0, new_volume))
+            # For Piper: rate becomes length_scale (inverse: slower = higher value)
+            # For pyttsx3: rate is words per minute
+            if hasattr(self.tts, 'provider_name') and self.tts.provider_name == 'piper':
+                # Piper uses length_scale: 1.0 = normal, 1.2 = slower, 0.8 = faster
+                # Invert rate multiplier for Piper's length_scale
+                length_scale = 1.0 / modulation['rate_mult']
+                self.tts.set_rate(length_scale)
+            else:
+                # pyttsx3 uses words per minute
+                self.tts.set_rate(new_rate)
+
+            self.tts.set_volume(min(1.0, new_volume))
 
             self.current_emotion = emotion
             logger.debug(f"Voice set to {emotion}: rate={new_rate}, volume={new_volume:.2f}")
@@ -217,8 +240,13 @@ class TTSEngine:
     def _reset_voice(self):
         """Reset voice to base parameters"""
         try:
-            self.tts.engine.setProperty('rate', self.base_rate)
-            self.tts.engine.setProperty('volume', self.base_volume)
+            # Use factory methods instead of direct engine access
+            if hasattr(self.tts, 'provider_name') and self.tts.provider_name == 'piper':
+                self.tts.set_rate(1.0)  # Piper: 1.0 = normal length_scale
+            else:
+                self.tts.set_rate(self.base_rate)  # pyttsx3: words per minute
+
+            self.tts.set_volume(self.base_volume)
 
             self.current_emotion = None
             logger.debug("Voice reset to base parameters")
@@ -345,7 +373,7 @@ if __name__ == "__main__":
 
     # Show stats
     stats = tts.get_statistics()
-    print(f"\nStatistics:")
+    print("\nStatistics:")
     print(f"  Total utterances: {stats['total_utterances']}")
     print(f"  Provider: {stats['provider']}")
 
