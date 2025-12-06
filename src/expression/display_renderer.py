@@ -3,14 +3,22 @@ Display Renderer for Emotion Expression Pipeline
 Handles pygame initialization, image loading, and frame rendering for piTFT
 """
 
-import pygame
+try:
+    import pygame  # type: ignore  # noqa: E0401
+except ImportError:  # pragma: no cover
+    pygame = None  # type: ignore
 import os
 import glob
 import logging
 from pathlib import Path
-from typing import Dict, Tuple, Optional
+from typing import Dict, Tuple, Optional, Any
+
+from .procedural_face import ProceduralFaceRenderer
+
+# pylint: disable=import-error
 
 logger = logging.getLogger(__name__)
+EmotionFrames = Tuple[pygame.Surface, pygame.Surface]
 
 
 class DisplayRenderer:
@@ -19,9 +27,13 @@ class DisplayRenderer:
     Manages piTFT framebuffer, image loading, and alpha blending
     """
 
-    def __init__(self, screen_size: Tuple[int, int] = (320, 240),
-                 framebuffer: str = "/dev/fb0",
-                 image_dir: str = "src/display"):
+    def __init__(
+        self,
+        screen_size: Tuple[int, int] = (320, 240),
+        framebuffer: str = "/dev/fb0",
+        image_dir: str = "src/display",
+        procedural_config: Optional[Dict[str, Any]] = None,
+    ):
         """
         Initialize display renderer
 
@@ -35,15 +47,25 @@ class DisplayRenderer:
         self.image_dir = Path(image_dir)
         self.screen: Optional[pygame.Surface] = None
 
-        # Image cache: {emotion: (base_surface, speaking_surface)}
-        self.emotion_images: Dict[str, Tuple[pygame.Surface, pygame.Surface]] = {}
+        self.emotion_images: Dict[str, EmotionFrames] = {}
         self.listening_image: Optional[pygame.Surface] = None
+
+        # Procedural rendering
+        procedural_config = procedural_config or {}
+        self.use_procedural = procedural_config.get('enabled', False)
+        self.procedural_renderer: Optional[ProceduralFaceRenderer] = None
 
         # Initialize pygame with piTFT
         self._init_pygame()
 
-        # Load all emotion sprites
-        self._load_emotion_images()
+        if self.use_procedural:
+            self.procedural_renderer = ProceduralFaceRenderer(
+                self.screen_size, procedural_config
+            )
+            logger.info("Procedural face renderer enabled")
+        else:
+            # Load all emotion sprites
+            self._load_emotion_images()
 
     def _init_pygame(self):
         """Initialize pygame with piTFT framebuffer or fallback to window"""
@@ -56,10 +78,10 @@ class DisplayRenderer:
             pygame.init()
             pygame.mouse.set_visible(False)
             self.screen = pygame.display.set_mode(self.screen_size)
-            logger.info(f"Initialized piTFT display at {self.framebuffer}")
+            logger.info("Initialized piTFT display at %s", self.framebuffer)
 
         except pygame.error as e:
-            logger.warning(f"piTFT initialization failed: {e}")
+            logger.warning("piTFT initialization failed: %s", e)
             logger.warning("Falling back to window mode for testing")
 
             # Clear environment variables and retry in window mode
@@ -81,10 +103,10 @@ class DisplayRenderer:
         Pattern from test_emotion_display.py lines 10-41
         """
         if not self.image_dir.exists():
-            logger.error(f"Image directory not found: {self.image_dir}")
+            logger.error("Image directory not found: %s", self.image_dir)
             return
 
-        # Find all base emotion PNG files (exclude _speaking and _active variants)
+        # Find base emotion PNG files (exclude _speaking and _active variants)
         base_files = glob.glob(str(self.image_dir / "*.png"))
 
         loaded_count = 0
@@ -109,32 +131,39 @@ class DisplayRenderer:
                 # Try to find speaking variant
                 speaking_path = self.image_dir / f"{emotion_name}_speaking.png"
                 if speaking_path.exists():
-                    speaking_surface = self._load_and_scale_image(str(speaking_path))
+                    speaking_surface = self._load_and_scale_image(
+                        str(speaking_path)
+                    )
                 else:
                     # Reuse base frame if no speaking frame exists
                     speaking_surface = base_surface
-                    logger.warning(f"No speaking frame for {emotion_name}, using base frame")
+                    logger.warning(
+                        "No speaking frame for %s; using base", emotion_name
+                    )
 
-                self.emotion_images[emotion_name] = (base_surface, speaking_surface)
+                self.emotion_images[emotion_name] = (
+                    base_surface,
+                    speaking_surface,
+                )
                 loaded_count += 1
-                logger.debug(f"Loaded emotion: {emotion_name}")
+                logger.debug("Loaded emotion: %s", emotion_name)
 
-            except Exception as e:
-                logger.error(f"Failed to load {emotion_name}: {e}")
+            except pygame.error as e:
+                logger.error("Failed to load %s: %s", emotion_name, e)
 
-        logger.info(f"Loaded {loaded_count} emotion pairs")
+        logger.info("Loaded %s emotion pairs", loaded_count)
 
         # Validate required emotions loaded
         if loaded_count == 0:
-            logger.error("No emotion images loaded! Display will not function.")
+            logger.error("No emotion images loaded; display disabled.")
 
     def _load_listening_image(self, base_path: str):
         """Load the special listening state image"""
         try:
             self.listening_image = self._load_and_scale_image(base_path)
             logger.debug("Loaded listening state image")
-        except Exception as e:
-            logger.error(f"Failed to load listening image: {e}")
+        except pygame.error as e:
+            logger.error("Failed to load listening image: %s", e)
 
     def _load_and_scale_image(self, image_path: str) -> pygame.Surface:
         """
@@ -154,7 +183,9 @@ class DisplayRenderer:
 
         return surface
 
-    def get_emotion_frame(self, emotion: str, speaking: bool = False) -> Optional[pygame.Surface]:
+    def get_emotion_frame(
+        self, emotion: str, speaking: bool = False
+    ) -> Optional[pygame.Surface]:
         """
         Get emotion surface for rendering
 
@@ -166,7 +197,9 @@ class DisplayRenderer:
             Pygame surface or None if emotion not found
         """
         if emotion not in self.emotion_images:
-            logger.warning(f"Emotion '{emotion}' not found, using 'happy' fallback")
+            logger.warning(
+                "Emotion '%s' not found, using 'happy' fallback", emotion
+            )
             emotion = 'happy'  # Fallback to happy
 
             if emotion not in self.emotion_images:
@@ -196,8 +229,36 @@ class DisplayRenderer:
         self.screen.blit(surface, (0, 0))
         pygame.display.flip()
 
-    def create_blended_frame(self, img1: pygame.Surface, img2: pygame.Surface,
-                           alpha: float) -> pygame.Surface:
+    def render_procedural(
+        self,
+        current_params: Dict,
+        target_params: Optional[Dict],
+        blend_alpha: float,
+        speaking_level: float,
+        listening: bool,
+        delta_time: float,
+    ):
+        if not self.use_procedural or not self.procedural_renderer:
+            logger.warning("Procedural renderer not available")
+            return
+
+        self.procedural_renderer.update_state(
+            delta_time, speaking_level, listening
+        )
+        frame = self.procedural_renderer.render(
+            current_params=current_params,
+            target_params=target_params,
+            blend_alpha=blend_alpha,
+            listening=listening,
+        )
+        self.render_frame(frame)
+
+    def create_blended_frame(
+        self,
+        img1: pygame.Surface,
+        img2: pygame.Surface,
+        alpha: float,
+    ) -> pygame.Surface:
         """
         Create alpha-blended composite of two images for smooth transitions
 

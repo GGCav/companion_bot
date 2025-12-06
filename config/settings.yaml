@@ -147,6 +147,22 @@ expression:
     fps: 60                  # Frame rate for smooth animations
     image_dir: "src/display" # Emotion sprite directory
 
+    procedural_face:
+      enabled: true          # Switch to procedural Pygame renderer (no PNG swaps)
+      background: [0, 0, 0]
+      blink_interval: [3.0, 6.0]
+      blink_duration: 0.12
+      eye_jitter: 1.5
+      mouth_smooth: 8.0
+      transition_smooth: 6.0
+      speaking_smooth: 10.0
+      listening_pulse_speed: 1.5
+      listening_pulse_strength: 0.08
+      # Optional per-emotion overrides live under presets:
+      # presets:
+      #   happy:
+      #     mouth_curve: 0.4
+
     transitions:
       enabled: true
       default_duration: 0.5  # Transition duration in seconds
