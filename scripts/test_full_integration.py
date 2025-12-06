@@ -132,10 +132,25 @@ class LatencyMonitor:
             print(f"  Min: {perc['min']:.3f}s | Max: {perc['max']:.3f}s | "
                   f"P95: {perc['p95']:.3f}s\n")
 
+        # STT metrics (if voice mode used)
+        if 'stt_total' in stats:
+            stt = stats['stt_total']
+            print(f"{Fore.GREEN}STT Latency:{Style.RESET_ALL}")
+            print(f"  Average: {stt['avg']:.3f}s")
+            print(f"  Min: {stt['min']:.3f}s | Max: {stt['max']:.3f}s | "
+                  f"P95: {stt['p95']:.3f}s\n")
+
+        if 'stt_confidence' in stats:
+            conf = stats['stt_confidence']
+            print(f"{Fore.GREEN}STT Confidence:{Style.RESET_ALL}")
+            print(f"  Average: {conf['avg']:.2f}")
+            print(f"  Min: {conf['min']:.2f} | Max: {conf['max']:.2f}\n")
+
         # Component breakdown
         print(f"{Fore.YELLOW}Component Breakdown:{Style.RESET_ALL}")
 
         component_order = [
+            'stt_total',
             'memory_context_retrieval',
             'llm_total',
             'llm_time_to_first_token',
@@ -187,6 +202,8 @@ class IntegrationTest:
         self.tts_engine = None
         self.stt_engine = None
         self.emotion_display = None
+        self.voice_pipeline = None
+        self.input_mode = 'text'  # 'text' or 'voice'
 
         # Initialize all components
         print(f"{Fore.CYAN}Initializing components...{Style.RESET_ALL}")
@@ -194,6 +211,7 @@ class IntegrationTest:
         self._init_llm()
         self._init_tts()
         self._init_expression()
+        self._init_voice_pipeline()
         print(f"{Fore.GREEN}All components initialized!{Style.RESET_ALL}\n")
 
     def _init_memory(self):
@@ -279,6 +297,104 @@ class IntegrationTest:
             print(f"  ⚠️  Expression Display: {e} (non-critical)")
             logger.warning(f"Expression display initialization failed: {e}")
             self.emotion_display = None  # Continue without display
+
+    def _init_voice_pipeline(self):
+        """Initialize voice pipeline for STT"""
+        try:
+            self.latency_monitor.start_timer('init_voice_pipeline')
+
+            from llm.voice_pipeline import VoicePipeline
+
+            self.voice_pipeline = VoicePipeline(self.config)
+
+            self.latency_monitor.end_timer('init_voice_pipeline')
+            print(f"  ✅ Voice Pipeline (STT)")
+
+        except Exception as e:
+            print(f"  ⚠️  Voice Pipeline: {e} (falling back to text mode)")
+            logger.warning(f"Voice pipeline initialization failed: {e}")
+            self.voice_pipeline = None
+
+    def _choose_input_mode(self):
+        """Let user choose between text and voice input"""
+        if self.voice_pipeline is None:
+            print(f"{Fore.YELLOW}Voice pipeline unavailable, "
+                  f"using text mode{Style.RESET_ALL}")
+            self.input_mode = 'text'
+            return
+
+        print(f"\n{Fore.CYAN}Select Input Mode:{Style.RESET_ALL}")
+        print(f"  1. Voice (microphone + STT)")
+        print(f"  2. Text (keyboard)")
+
+        while True:
+            choice = input(f"{Fore.GREEN}Choice (1/2): "
+                          f"{Style.RESET_ALL}").strip()
+            if choice == '1':
+                self.input_mode = 'voice'
+                print(f"{Fore.GREEN}Voice mode enabled{Style.RESET_ALL}")
+                break
+            elif choice == '2':
+                self.input_mode = 'text'
+                print(f"{Fore.GREEN}Text mode enabled{Style.RESET_ALL}")
+                break
+            else:
+                print(f"{Fore.RED}Invalid choice{Style.RESET_ALL}")
+
+    def _get_user_input_voice(self):
+        """
+        Get user input via voice (microphone + STT)
+
+        Returns:
+            Transcribed text or None if cancelled
+        """
+        print(f"{Fore.CYAN}🎤 Listening... (speak now){Style.RESET_ALL}")
+
+        # Start STT timing
+        self.latency_monitor.start_timer('stt_total')
+
+        # Start voice pipeline listening
+        self.voice_pipeline.start()
+
+        try:
+            # Wait for transcription with timeout
+            result = self.voice_pipeline.wait_for_transcription(timeout=30.0)
+
+            if result and result.get('text'):
+                transcription = result['text'].strip()
+                confidence = result.get('confidence', 0.0)
+
+                # End STT timing
+                stt_time = self.latency_monitor.end_timer('stt_total')
+
+                # Record STT confidence
+                self.latency_monitor.record_metric('stt_confidence',
+                                                   confidence)
+
+                print(f"{Fore.GREEN}You (voice): {transcription}"
+                      f"{Style.RESET_ALL}")
+                print(f"{Fore.CYAN}[STT: {stt_time:.2f}s, "
+                      f"confidence: {confidence:.2f}]{Style.RESET_ALL}")
+
+                return transcription
+            else:
+                print(f"{Fore.YELLOW}No speech detected{Style.RESET_ALL}")
+                # Cancel timer if no speech
+                if 'stt_total' in self.latency_monitor.current_timers:
+                    del self.latency_monitor.current_timers['stt_total']
+                return None
+
+        except Exception as e:
+            logger.error(f"Voice input error: {e}", exc_info=True)
+            print(f"{Fore.RED}Voice input failed: {e}{Style.RESET_ALL}")
+            # Cancel timer on error
+            if 'stt_total' in self.latency_monitor.current_timers:
+                del self.latency_monitor.current_timers['stt_total']
+            return None
+
+        finally:
+            # Stop voice pipeline
+            self.voice_pipeline.stop()
 
     def _process_conversation_turn(self, user_text: str):
         """
@@ -400,28 +516,50 @@ class IntegrationTest:
         print(f"{Fore.CYAN}{'='*70}{Style.RESET_ALL}")
         print(f"\n{Fore.GREEN}Test Mode: Interactive Demo{Style.RESET_ALL}")
         print(f"{Fore.GREEN}Session ID: {self.session_id}{Style.RESET_ALL}")
+
+        # Choose input mode
+        self._choose_input_mode()
+
+        # Display instructions based on mode
         print(f"\n{Fore.YELLOW}Commands:{Style.RESET_ALL}")
-        print(f"  - Type your message to chat")
-        print(f"  - Type 'stats' to see latency statistics")
-        print(f"  - Type 'quit' or 'exit' to finish and save report")
+        if self.input_mode == 'voice':
+            print("  - Speak into microphone to chat")
+            print("  - Say 'statistics' or 'stats' to see latency metrics")
+            print("  - Say 'quit' or 'exit' to finish")
+        else:
+            print("  - Type your message to chat")
+            print("  - Type 'stats' to see latency statistics")
+            print("  - Type 'quit' or 'exit' to finish and save report")
         print(f"{Fore.CYAN}{'─'*70}{Style.RESET_ALL}\n")
 
         conversation_count = 0
 
         while True:
             try:
-                # Get user input
-                user_input = input(f"{Fore.GREEN}You: {Style.RESET_ALL}").strip()
+                # Get user input based on mode
+                if self.input_mode == 'voice':
+                    user_input = self._get_user_input_voice()
 
-                if not user_input:
-                    continue
+                    # Handle empty or None
+                    if not user_input:
+                        continue
 
-                if user_input.lower() in ['quit', 'exit']:
-                    break
+                else:
+                    # Text mode
+                    user_input = input(f"{Fore.GREEN}You: "
+                                      f"{Style.RESET_ALL}").strip()
 
-                if user_input.lower() == 'stats':
-                    self.latency_monitor.print_summary()
-                    continue
+                    if not user_input:
+                        continue
+
+                # Handle commands (works for both voice and text)
+                if user_input.lower() in ['quit', 'exit', 'statistics',
+                                          'stats']:
+                    if user_input.lower() in ['quit', 'exit']:
+                        break
+                    elif user_input.lower() in ['statistics', 'stats']:
+                        self.latency_monitor.print_summary()
+                        continue
 
                 # Process conversation turn
                 print(f"{Fore.YELLOW}[Processing...]{Style.RESET_ALL}")
@@ -492,6 +630,12 @@ class IntegrationTest:
     def cleanup(self):
         """Clean up all components"""
         logger.info("Cleaning up components...")
+
+        if self.voice_pipeline:
+            try:
+                self.voice_pipeline.cleanup()
+            except Exception as e:
+                logger.error(f"Voice pipeline cleanup error: {e}")
 
         if self.emotion_display:
             try:
