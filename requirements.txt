@@ -54,6 +54,7 @@ pyyaml
 python-dateutil
 pytz
 colorlog  # Better logging
+colorama  # Colored terminal output
 
 # Async & Threading
 asyncio
