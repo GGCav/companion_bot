@@ -307,6 +307,15 @@ class IntegrationTest:
 
             self.voice_pipeline = VoicePipeline(self.config)
 
+            # Register speech detection callbacks
+            self.voice_pipeline.set_speech_callbacks(
+                on_start=self._on_speech_start,
+                on_end=self._on_speech_end
+            )
+            self.voice_pipeline.set_transcription_callback(
+                self._on_transcription_complete
+            )
+
             self.latency_monitor.end_timer('init_voice_pipeline')
             print(f"  ✅ Voice Pipeline (STT)")
 
@@ -314,6 +323,23 @@ class IntegrationTest:
             print(f"  ⚠️  Voice Pipeline: {e} (falling back to text mode)")
             logger.warning(f"Voice pipeline initialization failed: {e}")
             self.voice_pipeline = None
+
+    def _on_speech_start(self):
+        """Callback when speech detection starts recording"""
+        if self.emotion_display:
+            self.emotion_display.set_listening(True)
+        logger.debug("Speech detected - listening state activated")
+
+    def _on_speech_end(self):
+        """Callback when speech ends (silence detected)"""
+        # Note: Don't deactivate listening yet - transcription still in progress
+        logger.debug("Speech ended - processing transcription")
+
+    def _on_transcription_complete(self, result: dict):
+        """Callback when transcription completes"""
+        if self.emotion_display:
+            self.emotion_display.set_listening(False)
+        logger.debug(f"Transcription complete: {result.get('text', '')}")
 
     def _choose_input_mode(self):
         """Let user choose between text and voice input"""
@@ -353,11 +379,8 @@ class IntegrationTest:
         # Start STT timing
         self.latency_monitor.start_timer('stt_total')
 
-        # Activate listening state on display
-        if self.emotion_display:
-            self.emotion_display.set_listening(True)
-
         # Start voice pipeline listening
+        # (listening state will be activated by callback when speech detected)
         self.voice_pipeline.start()
 
         try:
@@ -398,11 +421,8 @@ class IntegrationTest:
 
         finally:
             # Stop voice pipeline
+            # (listening state will be deactivated by callback when transcription completes)
             self.voice_pipeline.stop()
-
-            # Deactivate listening state on display
-            if self.emotion_display:
-                self.emotion_display.set_listening(False)
 
     def _process_conversation_turn(self, user_text: str):
         """
