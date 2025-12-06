@@ -601,10 +601,11 @@ class EmotionDisplay:
                     listening=False,
                     delta_time=self._last_delta_time
                 )
-            else:
-                frame = self.renderer.get_emotion_frame(
-                    self.state.current_emotion, speaking=False
-                )
+                return
+
+            frame = self.renderer.get_emotion_frame(
+                self.state.current_emotion, speaking=False
+            )
             if frame:
                 self.renderer.render_frame(frame)
 
