@@ -185,7 +185,8 @@ class ProceduralFaceRenderer:
             int(eye_center[0] + eye_width * 0.6),
             int(eye_center[1] - eye_height * (0.8 + raise_amt) + slant * 10),
         )
-        pygame.draw.line(self.surface, color, start, end, width=4)
+        # Older pygame on Pi may not accept keyword args for width
+        pygame.draw.line(self.surface, color, start, end, 4)
 
     def _draw_mouth(
         self,
@@ -213,5 +214,6 @@ class ProceduralFaceRenderer:
             y = int((1 - t) * (1 - t) * start[1] + 2 * (1 - t) * t * control[1] + t * t * end[1])
             points.append((x, y))
 
-        pygame.draw.lines(self.surface, color, False, points, width=h2)
+        # Use positional width for compatibility
+        pygame.draw.lines(self.surface, color, False, points, h2)
 
