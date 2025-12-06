@@ -353,6 +353,10 @@ class IntegrationTest:
         # Start STT timing
         self.latency_monitor.start_timer('stt_total')
 
+        # Activate listening state on display
+        if self.emotion_display:
+            self.emotion_display.set_listening(True)
+
         # Start voice pipeline listening
         self.voice_pipeline.start()
 
@@ -395,6 +399,10 @@ class IntegrationTest:
         finally:
             # Stop voice pipeline
             self.voice_pipeline.stop()
+
+            # Deactivate listening state on display
+            if self.emotion_display:
+                self.emotion_display.set_listening(False)
 
     def _process_conversation_turn(self, user_text: str):
         """
