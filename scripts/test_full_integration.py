@@ -498,21 +498,18 @@ class IntegrationTest:
 
         self.latency_monitor.end_timer('memory_save_message')
 
-        # 4. Expression - Update display
-        if self.emotion_display and segments:
-            self.latency_monitor.start_timer('expression_update')
-            final_emotion = segments[-1][0]
-            self.emotion_display.set_emotion(final_emotion, transition_duration=0.5)
-            self.latency_monitor.end_timer('expression_update')
-
-        # 5. TTS - Speak segments
+        # 4. TTS - Speak segments (emotion display updated per segment)
         tts_start = time.time()
         self.latency_monitor.start_timer('tts_total')
 
         for i, (emotion, text) in enumerate(segments):
             self.latency_monitor.start_timer(f'tts_segment_{i}')
 
+            # Update display to match segment emotion
             if self.emotion_display:
+                self.latency_monitor.start_timer('expression_update')
+                self.emotion_display.set_emotion(emotion, transition_duration=0.3)
+                self.latency_monitor.end_timer('expression_update')
                 self.emotion_display.set_speaking(True)
 
             try:
