@@ -229,7 +229,7 @@ class ConversationManager:
         self.session_id = self._generate_session_id()
 
         # Response filtering
-        self.max_response_length = 200  # Characters
+        self.max_response_length = 240  # Characters
         self.response_filters = [
             self._ensure_short,
             self._ensure_pet_like,

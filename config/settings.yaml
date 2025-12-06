@@ -230,13 +230,13 @@ llm:
 
   generation:
     temperature: 0.8  # 0-1, higher = more creative
-    max_tokens: 300  # Allow longer contextual responses
+    max_tokens: 400  # Allow longer contextual responses
     top_p: 0.9
 
   streaming:
     enabled: true  # Enable streaming for faster response time
-    segment_timeout: 2.0  # Force segment emit after N seconds without sentence boundary
-    min_segment_length: 5  # Minimum characters before emitting a segment
+    segment_timeout: 1.5  # Force segment emit after N seconds without sentence boundary
+    min_segment_length: 8  # Minimum characters before emitting a segment
 
   personality_prompt: |
     You are Buddy, a cute affectionate pet companion robot who loves {user_name}.
