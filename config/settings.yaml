@@ -156,6 +156,7 @@ expression:
       mouth_smooth: 8.0
       transition_smooth: 6.0
       speaking_smooth: 10.0
+      speaking_rest_factor: 0.35  # Fractional mouth openness on low flap
       listening_pulse_speed: 1.5
       listening_pulse_strength: 0.08
       # Optional per-emotion overrides live under presets:

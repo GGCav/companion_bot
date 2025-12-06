@@ -296,6 +296,9 @@ class EmotionDisplay:
         self.config = config
         self.display_config = config.get('expression', {}).get('display', {})
         self.procedural_config = self.display_config.get('procedural_face', {})
+        self.speaking_rest_factor = self.procedural_config.get(
+            'speaking_rest_factor', 0.35
+        )
 
         # Extract configuration
         screen_size = tuple(self.display_config.get('resolution', [320, 240]))
@@ -506,9 +509,19 @@ class EmotionDisplay:
                     1e-3, self.procedural_config.get('speaking_smooth', 8.0)
                 )
                 blend = 1.0 - math.exp(-smooth * max(delta_time, 0.0))
+                target_level = (
+                    self.state.speaking_level_target
+                    if self.state.is_speaking
+                    else 0.0
+                )
+                if (
+                    self.state.is_speaking
+                    and not self.state.speaking_frame_toggle
+                ):
+                    target_level *= self.speaking_rest_factor
                 self.state.speaking_level = (
                     (1 - blend) * self.state.speaking_level
-                    + blend * self.state.speaking_level_target
+                    + blend * target_level
                 )
 
     def _render_frame(self):
