@@ -342,8 +342,14 @@ class IntegrationTest:
 
         if speak_text and self.tts_engine:
             try:
-                # Mute STT briefly so our own TTS is not re-captured
-                self.stt_mute_until = time.time() + self.gesture_tts_mute_secs
+                # Estimate mute window to cover petting TTS playback
+                est_secs = max(
+                    self.gesture_tts_mute_secs,
+                    (len(speak_text) / 10.0) + 1.5
+                )
+                self.stt_mute_until = time.time() + est_secs
+                if self.voice_pipeline:
+                    self.voice_pipeline.set_mute(est_secs)
                 self.tts_engine.speak(speak_text, emotion=emotion, wait=False)
             except Exception as exc:  # pragma: no cover
                 logger.error(f"Gesture TTS failed: {exc}")

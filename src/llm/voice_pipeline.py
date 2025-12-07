@@ -64,6 +64,9 @@ class VoicePipeline:
         self.total_transcription_time = 0.0
         self.last_transcription_time = 0.0
 
+        # Mute window to ignore self-audio (e.g., TTS playback)
+        self.muted_until = 0.0
+
         logger.info("Voice pipeline initialized")
 
     def start(self):
@@ -100,6 +103,12 @@ class VoicePipeline:
 
         logger.info("Voice pipeline stopped")
 
+    def set_mute(self, seconds: float):
+        """
+        Temporarily mute pipeline processing (e.g., to avoid picking up TTS).
+        """
+        self.muted_until = time.time() + max(0.0, seconds)
+
     def _pipeline_loop(self):
         """Main pipeline processing loop"""
         logger.info("Pipeline loop started")
@@ -111,6 +120,14 @@ class VoicePipeline:
 
         while self.is_running:
             try:
+                # Skip processing during mute window (e.g., while TTS plays)
+                if time.time() < self.muted_until:
+                    audio_buffer = []
+                    silence_frames = 0
+                    speech_detected = False
+                    time.sleep(0.05)
+                    continue
+
                 # Get audio chunk from level_queue (always has latest audio)
                 audio_chunk = None
                 if not self.audio_input.level_queue.empty():
