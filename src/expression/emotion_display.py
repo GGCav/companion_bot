@@ -279,6 +279,7 @@ class DisplayState:
         self.speaking_level_target: float = 0.0
         self.speaking_phase: float = 0.0
         self.last_gesture_time: float = 0.0
+        self.pending_tap_time: float = 0.0
 
 
 class EmotionDisplay:
@@ -354,6 +355,7 @@ class EmotionDisplay:
         self._last_tap_time: float = 0.0
         self._drag_distance: float = 0.0
         self._last_effect_time: float = 0.0
+        self.pending_tap_time: float = 0.0
 
         # Initialize GPIO if available
         self._init_gpio()
@@ -515,6 +517,8 @@ class EmotionDisplay:
         Args:
             delta_time: Time since last update (seconds)
         """
+        pending_tap_fire = False
+
         with self.state_lock:
             # Update transition progress
             if self.transition.is_transitioning():
@@ -560,6 +564,19 @@ class EmotionDisplay:
                     (1 - blend) * self.state.speaking_level
                     + blend * target_level
                 )
+
+            # Fire pending single tap if double-tap window elapsed
+        if self.touch_enabled and self.pending_tap_time > 0.0:
+            double_tap_window = float(
+                self.touch_thresholds.get('double_tap_window', 0.35)
+            )
+            now = time.time()
+            if now - self.pending_tap_time > double_tap_window:
+                pending_tap_fire = True
+                self.pending_tap_time = 0.0
+
+        if pending_tap_fire:
+            self._trigger_gesture_effect("tap")
 
     def _render_frame(self):
         """
@@ -832,11 +849,14 @@ class EmotionDisplay:
 
         # Tap or double tap
         if dist < tap_dist and duration < long_press_time:
-            if now - self._last_tap_time <= double_tap_window:
-                self._last_tap_time = 0.0
+            if (
+                self.pending_tap_time > 0.0
+                and now - self.pending_tap_time <= double_tap_window
+            ):
+                self.pending_tap_time = 0.0
                 return "double_tap"
-            self._last_tap_time = now
-            return "tap"
+            self.pending_tap_time = now
+            return None
 
         # Scroll-like vertical drag
         if abs(dy) >= scroll_dist and abs(dy) > abs(dx):
