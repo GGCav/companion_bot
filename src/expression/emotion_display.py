@@ -896,6 +896,10 @@ class EmotionDisplay:
             logger.debug("Gesture %s has no configured effect", gesture)
             return
 
+        # Immediately mark petting active to block further gestures
+        self.state.petting_active = True
+        self.state.gesture_busy_until = now + self.effect_busy_window
+
         # Optional global effect cooldown to avoid stacking sounds/tts
         if now - self._last_effect_time < self.effect_queue_cooldown:
             logger.debug("Effect suppressed by cooldown")
