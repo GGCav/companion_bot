@@ -807,6 +807,9 @@ class EmotionDisplay:
         if pygame is None:
             return
 
+        if self.state.petting_active:
+            return
+
         if event.type == pygame.MOUSEBUTTONDOWN:
             self._touch_down_pos = event.pos
             self._touch_down_time = time.time()

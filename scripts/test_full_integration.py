@@ -363,8 +363,8 @@ class IntegrationTest:
                 # Play petting line synchronously
                 self.tts_engine.speak(speak_text, emotion=emotion, wait=True)
 
-                # Small tail before resuming
-                tail = 0.75
+                # Tail before resuming to avoid late capture
+                tail = 2.0
                 self.stt_mute_until = time.time() + tail
                 if self.voice_pipeline:
                     self.voice_pipeline.resume_listening()
