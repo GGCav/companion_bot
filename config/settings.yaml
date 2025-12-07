@@ -12,7 +12,7 @@ audio:
 
   output:
     device_index: 0  # null = default speaker (wm8960-soundcard configured via /etc/asound.conf)
-    sample_rate: 48000  # TTS output rate
+    sample_rate: 22050  # TTS output rate
     buffer_size: 2048  # Audio buffer size
     channels: 1
     # Hardware: wm8960-soundcard (card 0, device 0)
