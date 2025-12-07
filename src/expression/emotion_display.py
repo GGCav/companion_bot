@@ -311,6 +311,9 @@ class EmotionDisplay:
         self.gesture_cooldown = float(
             self.touch_thresholds.get('cooldown', 0.8)
         )
+        self.effect_queue_cooldown = float(
+            self.touch_thresholds.get('effect_cooldown', 0.4)
+        )
         self.effect_callback: Optional[Callable[[Dict], None]] = None
 
         # Extract configuration
@@ -350,6 +353,7 @@ class EmotionDisplay:
         self._touch_down_time: float = 0.0
         self._last_tap_time: float = 0.0
         self._drag_distance: float = 0.0
+        self._last_effect_time: float = 0.0
 
         # Initialize GPIO if available
         self._init_gpio()
@@ -806,12 +810,16 @@ class EmotionDisplay:
             if gesture:
                 self._trigger_gesture_effect(gesture)
 
-    def _classify_gesture(self, duration: float, dist: float, dx: float, dy: float) -> Optional[str]:
+    def _classify_gesture(
+        self, duration: float, dist: float, dx: float, dy: float
+    ) -> Optional[str]:
         """
         Classify gesture based on simple thresholds.
         """
         tap_dist = float(self.touch_thresholds.get('tap_distance', 20))
-        double_tap_window = float(self.touch_thresholds.get('double_tap_window', 0.35))
+        double_tap_window = float(
+            self.touch_thresholds.get('double_tap_window', 0.35)
+        )
         long_press_time = float(self.touch_thresholds.get('long_press', 0.6))
         drag_dist = float(self.touch_thresholds.get('drag_distance', 60))
         scroll_dist = float(self.touch_thresholds.get('scroll_distance', 80))
@@ -854,19 +862,30 @@ class EmotionDisplay:
             logger.debug("Gesture %s has no configured effect", gesture)
             return
 
+        # Optional global effect cooldown to avoid stacking sounds/tts
+        if now - self._last_effect_time < self.effect_queue_cooldown:
+            logger.debug("Effect suppressed by cooldown")
+            return
+        self._last_effect_time = now
+
         # Apply emotion immediately if configured
         emotion = effect.get('emotion')
         if emotion:
             self.set_emotion(emotion, transition_duration=0.4)
 
-        # Queue optional side effects (tts/sound/hardware) via callback or command
+        # Side effects (tts/sound/hardware) via callback or command
         if self.effect_callback:
             try:
                 self.effect_callback(effect)
-            except Exception as exc:  # pragma: no cover
+            except (
+                RuntimeError,
+                ValueError,
+                OSError,
+                TypeError,
+            ) as exc:  # pragma: no cover
                 logger.error("Effect callback failed: %s", exc)
         else:
-            # As a fallback, push to command queue to log/apply via _apply_effect
+            # As a fallback, push to command queue
             self.command_queue.put({
                 'type': 'APPLY_EFFECT',
                 'effect': effect

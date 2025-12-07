@@ -185,6 +185,7 @@ expression:
         drag_distance: 60       # pixels (stroke)
         scroll_distance: 80     # pixels (vertical)
         cooldown: 0.8           # seconds between gestures
+        effect_cooldown: 0.4    # seconds between triggered effects (TTS/sound)
       gesture_effects:
         tap:
           emotion: happy
