@@ -147,7 +147,7 @@ class ProceduralFaceRenderer:
                 )
                 thickness = max(2, self.listening_glow_thickness)
                 rect = overlay.get_rect().inflate(-thickness, -thickness)
-                pygame.draw.rect(overlay, color, rect, width=thickness)
+                pygame.draw.rect(overlay, color, rect, thickness)
                 self.surface.blit(overlay, (0, 0))
 
         return self.surface
