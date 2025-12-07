@@ -207,7 +207,8 @@ class IntegrationTest:
         # Base mute window to avoid STT hearing petting TTS
         self.gesture_tts_mute_secs = 6.0
         self.petting_lock = False
-        self.input_mode = 'text'  # 'text' or 'voice'
+        # Default to voice mode for unattended autorun
+        self.input_mode = 'voice'  # 'text' or 'voice'
 
         # Initialize all components
         print(f"{Fore.CYAN}Initializing components...{Style.RESET_ALL}")
@@ -407,30 +408,16 @@ class IntegrationTest:
         logger.debug(f"Transcription complete: {result.get('text', '')}")
 
     def _choose_input_mode(self):
-        """Let user choose between text and voice input"""
+        """Select input mode (auto voice for unattended runs)."""
         if self.voice_pipeline is None:
             print(f"{Fore.YELLOW}Voice pipeline unavailable, "
                   f"using text mode{Style.RESET_ALL}")
             self.input_mode = 'text'
             return
 
-        print(f"\n{Fore.CYAN}Select Input Mode:{Style.RESET_ALL}")
-        print(f"  1. Voice (microphone + STT)")
-        print(f"  2. Text (keyboard)")
-
-        while True:
-            choice = input(f"{Fore.GREEN}Choice (1/2): "
-                          f"{Style.RESET_ALL}").strip()
-            if choice == '1':
-                self.input_mode = 'voice'
-                print(f"{Fore.GREEN}Voice mode enabled{Style.RESET_ALL}")
-                break
-            elif choice == '2':
-                self.input_mode = 'text'
-                print(f"{Fore.GREEN}Text mode enabled{Style.RESET_ALL}")
-                break
-            else:
-                print(f"{Fore.RED}Invalid choice{Style.RESET_ALL}")
+        # Auto-select voice to avoid interactive prompt
+        self.input_mode = 'voice'
+        print(f"{Fore.GREEN}Voice mode enabled (auto){Style.RESET_ALL}")
 
     def _get_user_input_voice(self):
         """
