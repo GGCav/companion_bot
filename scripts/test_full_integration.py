@@ -483,6 +483,7 @@ class IntegrationTest:
 
         segments = []
         first_token_recorded = False
+        tts_started = False
 
         print(f"{Fore.CYAN}Bot: {Style.RESET_ALL}", end='', flush=True)
 
@@ -497,6 +498,30 @@ class IntegrationTest:
 
                 segments.append((emotion, text))
                 print(f"[{emotion}] {text} ", end='', flush=True)
+
+                # Speak each segment as it arrives
+                if not tts_started:
+                    tts_started = True
+                    tts_start = time.time()
+                    self.latency_monitor.start_timer('tts_total')
+                seg_idx = len(segments) - 1
+                self.latency_monitor.start_timer(f'tts_segment_{seg_idx}')
+
+                if self.emotion_display:
+                    self.latency_monitor.start_timer('expression_update')
+                    self.emotion_display.set_emotion(emotion, transition_duration=0.3)
+                    self.latency_monitor.end_timer('expression_update')
+                    self.emotion_display.set_speaking(True)
+
+                try:
+                    self.tts_engine.speak(text, emotion=emotion, wait=True)
+                except Exception as e:
+                    logger.error(f"TTS error: {e}", exc_info=True)
+
+                if self.emotion_display:
+                    self.emotion_display.set_speaking(False)
+
+                self.latency_monitor.end_timer(f'tts_segment_{seg_idx}')
 
         except Exception as e:
             logger.error(f"LLM generation error: {e}", exc_info=True)
@@ -535,31 +560,12 @@ class IntegrationTest:
 
         self.latency_monitor.end_timer('memory_save_message')
 
-        # 4. TTS - Speak segments (emotion display updated per segment)
-        tts_start = time.time()
-        self.latency_monitor.start_timer('tts_total')
-
-        for i, (emotion, text) in enumerate(segments):
-            self.latency_monitor.start_timer(f'tts_segment_{i}')
-
-            # Update display to match segment emotion
-            if self.emotion_display:
-                self.latency_monitor.start_timer('expression_update')
-                self.emotion_display.set_emotion(emotion, transition_duration=0.3)
-                self.latency_monitor.end_timer('expression_update')
-                self.emotion_display.set_speaking(True)
-
-            try:
-                self.tts_engine.speak(text, emotion=emotion, wait=True)
-            except Exception as e:
-                logger.error(f"TTS error: {e}", exc_info=True)
-
-            if self.emotion_display:
-                self.emotion_display.set_speaking(False)
-
-            self.latency_monitor.end_timer(f'tts_segment_{i}')
-
-        self.latency_monitor.end_timer('tts_total')
+        # End TTS total if it started
+        if first_token_recorded and tts_started:
+            self.latency_monitor.end_timer('tts_total')
+        elif not tts_started:
+            # No segments spoken; ensure timer not left running
+            self.latency_monitor.current_timers.pop('tts_total', None)
 
         # 6. End-to-end timing
         turn_end = time.time()
@@ -567,7 +573,7 @@ class IntegrationTest:
         self.latency_monitor.record_metric('end_to_end_latency', end_to_end)
 
         # Perceived latency (time to first audio playback)
-        if segments:
+        if first_token_recorded and tts_started:
             perceived = tts_start - turn_start
             self.latency_monitor.record_metric('perceived_latency', perceived)
 
