@@ -204,7 +204,8 @@ class IntegrationTest:
         self.emotion_display = None
         self.voice_pipeline = None
         self.stt_mute_until = 0.0
-        self.gesture_tts_mute_secs = 2.0
+        # Base mute window to avoid STT hearing petting TTS
+        self.gesture_tts_mute_secs = 4.0
         self.input_mode = 'text'  # 'text' or 'voice'
 
         # Initialize all components
@@ -345,7 +346,7 @@ class IntegrationTest:
                 # Estimate mute window to cover petting TTS playback
                 est_secs = max(
                     self.gesture_tts_mute_secs,
-                    (len(speak_text) / 10.0) + 1.5
+                    (len(speak_text) / 8.0) + 2.5
                 )
                 self.stt_mute_until = time.time() + est_secs
                 if self.voice_pipeline:
