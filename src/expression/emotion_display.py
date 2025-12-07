@@ -438,6 +438,9 @@ class EmotionDisplay:
             self._render_frame()
 
             # Handle pygame events
+            if self.touch_enabled and self.state.petting_active:
+                self._discard_touch_events()
+
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     self.is_running = False
@@ -839,6 +842,19 @@ class EmotionDisplay:
             if gesture:
                 self._trigger_gesture_effect(gesture)
 
+    def _discard_touch_events(self):
+        """
+        Drop queued touch/mouse events so they don't fire after a petting lock.
+        """
+        if pygame is None:
+            return
+        touch_events = (
+            pygame.MOUSEBUTTONDOWN,
+            pygame.MOUSEBUTTONUP,
+            pygame.MOUSEMOTION,
+        )
+        pygame.event.clear(touch_events)
+
     def _classify_gesture(
         self, duration: float, dist: float, dx: float, dy: float
     ) -> Optional[str]:
@@ -902,9 +918,12 @@ class EmotionDisplay:
         # Immediately mark petting active to block further gestures
         self.state.petting_active = True
         self.state.gesture_busy_until = now + self.effect_busy_window
+        self._discard_touch_events()
 
         # Optional global effect cooldown to avoid stacking sounds/tts
         if now - self._last_effect_time < self.effect_queue_cooldown:
+            # Release lock if we skipped triggering to avoid perma-blocking
+            self.state.petting_active = False
             logger.debug("Effect suppressed by cooldown")
             return
         self._last_effect_time = now
