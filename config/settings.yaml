@@ -318,12 +318,17 @@ llm:
 # Speech Recognition
 speech:
   stt:
-    provider: "whisper"  # whisper, google, vosk
+    provider: "faster-whisper"  # whisper, faster-whisper, google, vosk
     language: "en"
 
     whisper:
       model_size: "base"  # tiny, base, small (base is good for Pi)
       device: "cpu"
+
+    faster_whisper:
+      model_size: "tiny"   # tiny, base, small
+      device: "cpu"
+      compute_type: "int8"  # int8, int8_float16, int16, float32/16
 
     vosk:
       model_path: "models/vosk-model-small-en-us-0.15"

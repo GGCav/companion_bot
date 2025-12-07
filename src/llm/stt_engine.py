@@ -1,84 +1,123 @@
 """
 Speech-to-Text Engine
-Optimized for mini microphone with OpenAI Whisper
+Optimized for mini microphone with Whisper or Faster-Whisper
 """
 
-import whisper
-import numpy as np
 import logging
 import time
 import tempfile
 import wave
 from pathlib import Path
 from typing import Optional, Dict
+
+import numpy as np
 import torch
+
+try:
+    import whisper  # type: ignore
+except ImportError:  # pragma: no cover
+    whisper = None  # type: ignore
+
+try:
+    from faster_whisper import WhisperModel  # type: ignore
+except ImportError:  # pragma: no cover
+    WhisperModel = None  # type: ignore
 
 logger = logging.getLogger(__name__)
 
 
 class STTEngine:
-    """Speech-to-Text engine using OpenAI Whisper, optimized for mini microphones"""
+    """Speech-to-Text engine using Whisper or Faster-Whisper"""
 
     def __init__(self, config: dict):
         """
-        Initialize STT engine with Whisper
+        Initialize STT engine with selected provider
 
         Args:
             config: Configuration dictionary from settings.yaml
         """
         self.config = config
         self.stt_config = config['speech']['stt']
-        self.whisper_config = self.stt_config['whisper']
+        self.whisper_config = self.stt_config.get('whisper', {})
+        self.fw_config = self.stt_config.get('faster_whisper', {})
         self.audio_config = config['audio']['input']
 
-        # Model selection
-        self.model_size = self.whisper_config['model_size']  # tiny, base, small
+        # Provider selection
+        self.provider = self.stt_config.get('provider', 'whisper')
+        self.model_size = self.whisper_config.get('model_size', 'tiny')
         self.device = self.whisper_config.get('device', 'cpu')
         self.language = self.stt_config.get('language', 'en')
+        if self.provider == 'faster-whisper':
+            self.model_size = self.fw_config.get('model_size', 'tiny')
+            self.device = self.fw_config.get('device', 'cpu')
+            self.compute_type = self.fw_config.get('compute_type', 'int8')
+        else:
+            self.compute_type = None
 
         # Performance tracking
         self.total_transcriptions = 0
         self.total_time = 0.0
         self.avg_confidence = 0.0
 
-        # Load Whisper model
-        logger.info(f"Loading Whisper model: {self.model_size} on {self.device}")
+        # Load model
+        logger.info(
+            "Loading STT model (%s): %s on %s",
+            self.provider,
+            self.model_size,
+            self.device,
+        )
         self.model = self._load_model()
 
-        logger.info("STT Engine initialized with Whisper")
+        logger.info("STT Engine initialized with provider: %s", self.provider)
 
-    def _load_model(self) -> whisper.Whisper:
+    def _load_model(self):
         """
-        Load Whisper model with optimizations
-
-        Returns:
-            Loaded Whisper model
+        Load STT model with optimizations
         """
         try:
-            # Load model
+            if self.provider == 'faster-whisper':
+                if WhisperModel is None:
+                    raise ImportError("faster-whisper not installed")
+                compute_type = self.compute_type or 'int8'
+                model = WhisperModel(
+                    self.model_size,
+                    device=self.device,
+                    compute_type=compute_type
+                )
+                logger.info(
+                    "Faster-Whisper model '%s' loaded (%s, %s)",
+                    self.model_size,
+                    self.device,
+                    compute_type,
+                )
+                return model
+
+            # Default to openai/whisper
+            if whisper is None:
+                raise ImportError("openai-whisper not installed")
             model = whisper.load_model(
                 self.model_size,
                 device=self.device
             )
 
             # Optimize for inference
-            if self.device == 'cpu':
-                # CPU optimizations
-                logger.info("Applying CPU optimizations")
-                # Use FP32 for CPU (more stable than FP16)
-            else:
-                # GPU optimizations
+            if self.device != 'cpu':
                 logger.info("Applying GPU optimizations")
-                model = model.half()  # Use FP16 on GPU
+                model = model.half()
+            else:
+                logger.info("Using CPU precision (fp32)")
 
-            logger.info(f"Whisper model '{self.model_size}' loaded successfully")
+            logger.info("Whisper model '%s' loaded successfully", self.model_size)
             return model
 
         except Exception as e:
-            logger.error(f"Failed to load Whisper model: {e}")
-            # Fallback to smallest model
-            logger.warning("Falling back to 'tiny' model")
-            return whisper.load_model('tiny', device='cpu')
+            logger.error("Failed to load STT model: %s", e)
+            # Fallback to smallest
+            if self.provider == 'faster-whisper' and WhisperModel is not None:
+                return WhisperModel('tiny', device='cpu', compute_type='int8')
+            if whisper is not None:
+                return whisper.load_model('tiny', device='cpu')
+            raise
 
     def transcribe_audio(self, audio_data: bytes) -> Dict[str, any]:
         """
@@ -96,18 +135,10 @@ class STTEngine:
             # Save audio to temporary WAV file (Whisper expects file)
             temp_file = self._save_temp_audio(audio_data)
 
-            # Transcribe with Whisper
-            result = self.model.transcribe(
-                str(temp_file),
-                language=self.language if self.language != 'auto' else None,
-                fp16=(self.device != 'cpu'),
-                verbose=False,
-                condition_on_previous_text=False,  # Better for short utterances
-                temperature=0.0,  # Deterministic output
-                compression_ratio_threshold=2.4,
-                logprob_threshold=-1.0,
-                no_speech_threshold=0.6
-            )
+            if self.provider == 'faster-whisper':
+                result = self._transcribe_faster_whisper(str(temp_file))
+            else:
+                result = self._transcribe_whisper(str(temp_file))
 
             # Clean up temp file
             temp_file.unlink()
@@ -202,6 +233,59 @@ class STTEngine:
         except Exception as e:
             logger.error(f"Failed to save temporary audio: {e}")
             raise
+
+    def _transcribe_whisper(self, file_path: str) -> Dict:
+        if whisper is None:
+            raise RuntimeError("Whisper not installed")
+        return self.model.transcribe(
+            file_path,
+            language=self.language if self.language != 'auto' else None,
+            fp16=(self.device != 'cpu'),
+            verbose=False,
+            condition_on_previous_text=False,
+            temperature=0.0,
+            compression_ratio_threshold=2.4,
+            logprob_threshold=-1.0,
+            no_speech_threshold=0.6,
+        )
+
+    def _transcribe_faster_whisper(self, file_path: str) -> Dict:
+        if WhisperModel is None:
+            raise RuntimeError("faster-whisper not installed")
+
+        segments, info = self.model.transcribe(
+            file_path,
+            language=self.language if self.language != 'auto' else None,
+            beam_size=1,
+            temperature=0.0,
+        )
+
+        text_parts = []
+        confidences = []
+        fw_segments = []
+        for segment in segments:
+            text_parts.append(segment.text.strip())
+            fw_segments.append(
+                {
+                    'start': segment.start,
+                    'end': segment.end,
+                    'text': segment.text.strip(),
+                    'avg_logprob': segment.avg_logprob,
+                }
+            )
+            if segment.avg_logprob is not None:
+                confidences.append(np.exp(segment.avg_logprob))
+
+        text = " ".join(text_parts).strip()
+        avg_conf = float(np.mean(confidences)) if confidences else 0.5
+
+        return {
+            'text': text,
+            'language': info.language or self.language,
+            'confidence': avg_conf,
+            'duration': info.duration if info else 0.0,
+            'segments': fw_segments,
+        }
 
     def transcribe_from_file(self, audio_file: str) -> Dict[str, any]:
         """
