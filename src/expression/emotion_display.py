@@ -899,6 +899,15 @@ class EmotionDisplay:
         if emotion:
             self.set_emotion(emotion, transition_duration=0.4)
 
+        # Compute busy window (block new gestures) based on speak length
+        busy_seconds = self.effect_busy_window
+        speak_text = effect.get('speak')
+        if isinstance(speak_text, str) and speak_text.strip():
+            estimated = (len(speak_text) / 10.0) + 1.5  # rough TTS duration
+            busy_seconds = max(busy_seconds, estimated)
+
+        self.state.gesture_busy_until = now + busy_seconds
+
         # Side effects (tts/sound/hardware) via callback or command
         if self.effect_callback:
             try:
@@ -916,9 +925,6 @@ class EmotionDisplay:
                 'type': 'APPLY_EFFECT',
                 'effect': effect
             })
-
-        # Lock out further gestures while effect is active
-        self.state.gesture_busy_until = now + self.effect_busy_window
 
     def _apply_effect(self, effect: Dict):
         """
