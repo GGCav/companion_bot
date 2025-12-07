@@ -188,13 +188,14 @@ expression:
         cooldown: 0.8           # seconds between gestures
         effect_cooldown: 0.4    # seconds between triggered effects (TTS/sound)
         effect_busy: 1.2        # seconds to lock out further gestures while handling one
+        scroll_vs_drag_ratio: 1.2 # vertical dominance multiplier for scroll vs drag
       gesture_effects:
         tap:
           emotion: happy
           speak: "Hi there!"
         double_tap:
           emotion: loving
-          speak: "I love pets!"
+          speak: "I love this!"
         long_press:
           emotion: loving
           speak: "That feels nice."

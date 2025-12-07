@@ -844,6 +844,9 @@ class EmotionDisplay:
         long_press_time = float(self.touch_thresholds.get('long_press', 0.6))
         drag_dist = float(self.touch_thresholds.get('drag_distance', 60))
         scroll_dist = float(self.touch_thresholds.get('scroll_distance', 80))
+        scroll_vs_drag_ratio = float(
+            self.touch_thresholds.get('scroll_vs_drag_ratio', 1.2)
+        )
 
         now = time.time()
 
@@ -862,8 +865,11 @@ class EmotionDisplay:
             self.pending_tap_time = now
             return None
 
-        # Scroll-like vertical drag
-        if abs(dy) >= scroll_dist and abs(dy) > abs(dx):
+        # Scroll-like vertical drag: favor vertical vs horizontal
+        vertical_enough = (
+            abs(dy) >= scroll_vs_drag_ratio * max(abs(dx), 1.0)
+        )
+        if abs(dy) >= scroll_dist and vertical_enough:
             return "scroll"
 
         # Drag / stroke
