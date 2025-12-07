@@ -103,6 +103,26 @@ class VoicePipeline:
 
         logger.info("Voice pipeline stopped")
 
+    def pause_listening(self):
+        """
+        Pause listening without tearing down the thread; stops audio capture.
+        """
+        try:
+            self.audio_input.stop_listening()
+            logger.info("Voice pipeline paused")
+        except Exception as exc:  # noqa: BLE001
+            logger.error("Failed to pause voice pipeline: %s", exc)
+
+    def resume_listening(self):
+        """
+        Resume listening; restarts audio capture.
+        """
+        try:
+            self.audio_input.start_listening()
+            logger.info("Voice pipeline resumed")
+        except Exception as exc:  # noqa: BLE001
+            logger.error("Failed to resume voice pipeline: %s", exc)
+
     def set_mute(self, seconds: float):
         """
         Temporarily mute pipeline processing (e.g., to avoid picking up TTS).
