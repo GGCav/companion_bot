@@ -176,6 +176,32 @@ expression:
     speaking:
       toggle_interval: 0.15  # Frame toggle interval for speaking animation (seconds)
 
+    touch:
+      enabled: true
+      thresholds:
+        tap_distance: 25        # pixels
+        double_tap_window: 0.35 # seconds
+        long_press: 0.6         # seconds
+        drag_distance: 60       # pixels (stroke)
+        scroll_distance: 80     # pixels (vertical)
+        cooldown: 0.8           # seconds between gestures
+      gesture_effects:
+        tap:
+          emotion: happy
+          speak: "Hi there!"
+        double_tap:
+          emotion: loving
+          speak: "I love pets!"
+        long_press:
+          emotion: loving
+          speak: "That feels nice."
+        drag:
+          emotion: playful
+          speak: "Hehe, that tickles!"
+        scroll:
+          emotion: curious
+          speak: "What's up?"
+
     gpio:
       enabled: true
       exit_button_pin: 27    # GPIO pin for exit button (BCM mode)

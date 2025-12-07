@@ -12,7 +12,7 @@ import queue
 import time
 import logging
 import math
-from typing import Optional, Dict
+from typing import Optional, Dict, Callable, Tuple
 
 # pylint: disable=import-error
 
@@ -278,6 +278,7 @@ class DisplayState:
         self.speaking_level: float = 0.0
         self.speaking_level_target: float = 0.0
         self.speaking_phase: float = 0.0
+        self.last_gesture_time: float = 0.0
 
 
 class EmotionDisplay:
@@ -303,6 +304,14 @@ class EmotionDisplay:
         self.speaking_wave_hz = self.procedural_config.get(
             'speaking_wave_hz', 6.0
         )
+        self.touch_config = self.display_config.get('touch', {})
+        self.touch_enabled = self.touch_config.get('enabled', True)
+        self.touch_thresholds = self.touch_config.get('thresholds', {})
+        self.gesture_effects = self.touch_config.get('gesture_effects', {})
+        self.gesture_cooldown = float(
+            self.touch_thresholds.get('cooldown', 0.8)
+        )
+        self.effect_callback: Optional[Callable[[Dict], None]] = None
 
         # Extract configuration
         screen_size = tuple(self.display_config.get('resolution', [320, 240]))
@@ -335,6 +344,12 @@ class EmotionDisplay:
         # Performance tracking
         self.clock = pygame.time.Clock()
         self._last_delta_time = 0.0
+
+        # Touch state
+        self._touch_down_pos: Optional[Tuple[int, int]] = None
+        self._touch_down_time: float = 0.0
+        self._last_tap_time: float = 0.0
+        self._drag_distance: float = 0.0
 
         # Initialize GPIO if available
         self._init_gpio()
@@ -415,6 +430,8 @@ class EmotionDisplay:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     self.is_running = False
+                elif self.touch_enabled:
+                    self._handle_touch_event(event)
 
             # Maintain target FPS
             self.clock.tick(self.fps)
@@ -466,6 +483,10 @@ class EmotionDisplay:
                     # Reset phase on start to avoid mid-wave jump
                     self.state.speaking_phase = 0.0
                 logger.debug("Speaking: %s", active)
+
+            elif cmd_type == 'APPLY_EFFECT':
+                effect = cmd.get('effect', {})
+                self._apply_effect(effect)
 
     def _start_emotion_transition(self, emotion: str, duration: float):
         """Start transition to new emotion"""
@@ -693,6 +714,15 @@ class EmotionDisplay:
             'level': level
         })
 
+    def set_effect_callback(self, callback: Callable[[Dict], None]):
+        """
+        Set an optional effect callback invoked on gesture effects.
+
+        Args:
+            callback: Callable receiving a dict with effect info.
+        """
+        self.effect_callback = callback
+
     def cleanup(self):
         """Clean up display resources and GPIO"""
         logger.info("Cleaning up emotion display...")
@@ -737,3 +767,121 @@ class EmotionDisplay:
         if "happy" in self.emotion_params:
             return self.emotion_params["happy"]
         return list(self.emotion_params.values())[0]
+
+    # Touch handling
+
+    def _handle_touch_event(self, event):
+        """
+        Handle raw pygame touch/mouse events and detect gestures.
+        """
+        if pygame is None:
+            return
+
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            self._touch_down_pos = event.pos
+            self._touch_down_time = time.time()
+            self._drag_distance = 0.0
+
+        elif event.type == pygame.MOUSEMOTION and event.buttons[0]:
+            if self._touch_down_pos:
+                dx = event.pos[0] - self._touch_down_pos[0]
+                dy = event.pos[1] - self._touch_down_pos[1]
+                self._drag_distance += abs(dx) + abs(dy)
+                self._touch_down_pos = event.pos
+
+        elif event.type == pygame.MOUSEBUTTONUP:
+            if self._touch_down_pos is None:
+                return
+            up_pos = event.pos
+            down_pos = self._touch_down_pos
+            duration = time.time() - self._touch_down_time
+            dist = self._drag_distance
+            dx = up_pos[0] - down_pos[0]
+            dy = up_pos[1] - down_pos[1]
+
+            self._touch_down_pos = None
+            self._drag_distance = 0.0
+
+            gesture = self._classify_gesture(duration, dist, dx, dy)
+            if gesture:
+                self._trigger_gesture_effect(gesture)
+
+    def _classify_gesture(self, duration: float, dist: float, dx: float, dy: float) -> Optional[str]:
+        """
+        Classify gesture based on simple thresholds.
+        """
+        tap_dist = float(self.touch_thresholds.get('tap_distance', 20))
+        double_tap_window = float(self.touch_thresholds.get('double_tap_window', 0.35))
+        long_press_time = float(self.touch_thresholds.get('long_press', 0.6))
+        drag_dist = float(self.touch_thresholds.get('drag_distance', 60))
+        scroll_dist = float(self.touch_thresholds.get('scroll_distance', 80))
+
+        now = time.time()
+
+        # Long press
+        if duration >= long_press_time and dist < drag_dist:
+            return "long_press"
+
+        # Tap or double tap
+        if dist < tap_dist and duration < long_press_time:
+            if now - self._last_tap_time <= double_tap_window:
+                self._last_tap_time = 0.0
+                return "double_tap"
+            self._last_tap_time = now
+            return "tap"
+
+        # Scroll-like vertical drag
+        if abs(dy) >= scroll_dist and abs(dy) > abs(dx):
+            return "scroll"
+
+        # Drag / stroke
+        if dist >= drag_dist:
+            return "drag"
+
+        return None
+
+    def _trigger_gesture_effect(self, gesture: str):
+        """
+        Trigger configured effect for a gesture with rate limiting.
+        """
+        now = time.time()
+        if now - self.state.last_gesture_time < self.gesture_cooldown:
+            return
+        self.state.last_gesture_time = now
+
+        effect = self.gesture_effects.get(gesture)
+        if not effect:
+            logger.debug("Gesture %s has no configured effect", gesture)
+            return
+
+        # Apply emotion immediately if configured
+        emotion = effect.get('emotion')
+        if emotion:
+            self.set_emotion(emotion, transition_duration=0.4)
+
+        # Queue optional side effects (tts/sound/hardware) via callback or command
+        if self.effect_callback:
+            try:
+                self.effect_callback(effect)
+            except Exception as exc:  # pragma: no cover
+                logger.error("Effect callback failed: %s", exc)
+        else:
+            # As a fallback, push to command queue to log/apply via _apply_effect
+            self.command_queue.put({
+                'type': 'APPLY_EFFECT',
+                'effect': effect
+            })
+
+    def _apply_effect(self, effect: Dict):
+        """
+        Handle non-emotion effects internally (placeholder for future hooks).
+        """
+        sound = effect.get('sound')
+        speak = effect.get('speak')
+        hardware = effect.get('hardware')
+        if sound:
+            logger.info("Gesture sound requested: %s", sound)
+        if speak:
+            logger.info("Gesture speak requested: %s", speak)
+        if hardware:
+            logger.info("Gesture hardware action: %s", hardware)
