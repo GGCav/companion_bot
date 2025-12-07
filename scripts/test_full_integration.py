@@ -203,6 +203,8 @@ class IntegrationTest:
         self.stt_engine = None
         self.emotion_display = None
         self.voice_pipeline = None
+        self.stt_mute_until = 0.0
+        self.gesture_tts_mute_secs = 2.0
         self.input_mode = 'text'  # 'text' or 'voice'
 
         # Initialize all components
@@ -340,6 +342,8 @@ class IntegrationTest:
 
         if speak_text and self.tts_engine:
             try:
+                # Mute STT briefly so our own TTS is not re-captured
+                self.stt_mute_until = time.time() + self.gesture_tts_mute_secs
                 self.tts_engine.speak(speak_text, emotion=emotion, wait=False)
             except Exception as exc:  # pragma: no cover
                 logger.error(f"Gesture TTS failed: {exc}")
@@ -360,6 +364,9 @@ class IntegrationTest:
 
     def _on_transcription_complete(self, result: dict):
         """Callback when transcription completes"""
+        if time.time() < self.stt_mute_until:
+            logger.debug("Ignoring transcription during gesture TTS mute window")
+            return
         if self.emotion_display:
             self.emotion_display.set_listening(False)
         logger.debug(f"Transcription complete: {result.get('text', '')}")
