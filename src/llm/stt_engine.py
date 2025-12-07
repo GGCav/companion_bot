@@ -30,6 +30,10 @@ class STTEngine:
         self.stt_config = config['speech']['stt']
         self.whisper_config = self.stt_config['whisper']
         self.audio_config = config['audio']['input']
+        self.target_sample_rate = self.whisper_config.get(
+            'target_sample_rate', self.audio_config['sample_rate']
+        )
+        self.max_duration = float(self.whisper_config.get('max_duration', 8.0))
 
         # Model selection
         self.model_size = self.whisper_config['model_size']  # tiny, base, small
@@ -93,8 +97,10 @@ class STTEngine:
         start_time = time.time()
 
         try:
+            processed_audio, sample_rate = self._prepare_audio(audio_data)
+
             # Save audio to temporary WAV file (Whisper expects file)
-            temp_file = self._save_temp_audio(audio_data)
+            temp_file = self._save_temp_audio(processed_audio, sample_rate)
 
             # Transcribe with Whisper
             result = self.model.transcribe(
@@ -176,7 +182,34 @@ class STTEngine:
 
         return self.transcribe_audio(audio_bytes)
 
-    def _save_temp_audio(self, audio_data: bytes) -> Path:
+    def _prepare_audio(self, audio_data: bytes) -> tuple[bytes, int]:
+        """
+        Resample and trim audio before transcription.
+        """
+        src_rate = self.audio_config['sample_rate']
+        target_rate = self.target_sample_rate
+
+        # Convert bytes to numpy array
+        samples = np.frombuffer(audio_data, dtype=np.int16)
+
+        # Trim to max_duration
+        max_samples = int(self.max_duration * src_rate)
+        if samples.size > max_samples:
+            samples = samples[-max_samples:]
+
+        # Resample if needed
+        if src_rate != target_rate and samples.size > 0:
+            src_len = samples.size
+            target_len = int(src_len * target_rate / src_rate)
+            if target_len > 0:
+                x_old = np.linspace(0, 1, src_len, endpoint=False)
+                x_new = np.linspace(0, 1, target_len, endpoint=False)
+                samples = np.interp(x_new, x_old, samples).astype(np.int16)
+                src_rate = target_rate
+
+        return samples.tobytes(), src_rate
+
+    def _save_temp_audio(self, audio_data: bytes, sample_rate: int) -> Path:
         """
         Save audio data to temporary WAV file
 
@@ -194,7 +227,7 @@ class STTEngine:
             with wave.open(str(temp_file), 'wb') as wf:
                 wf.setnchannels(self.audio_config['channels'])
                 wf.setsampwidth(2)  # 16-bit = 2 bytes
-                wf.setframerate(self.audio_config['sample_rate'])
+                wf.setframerate(sample_rate)
                 wf.writeframes(audio_data)
 
             return temp_file
