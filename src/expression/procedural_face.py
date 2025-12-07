@@ -39,6 +39,9 @@ class ProceduralFaceRenderer:
         self.transition_smooth = float(config.get("transition_smooth", 6.0))
         self.listening_pulse_speed = float(config.get("listening_pulse_speed", 1.5))
         self.listening_pulse_strength = float(config.get("listening_pulse_strength", 0.08))
+        self.listening_glow_color = tuple(config.get("listening_glow_color", [0, 200, 255]))
+        self.listening_glow_alpha = float(config.get("listening_glow_alpha", 0.35))
+        self.listening_glow_thickness = int(config.get("listening_glow_thickness", 6))
         self.background_color = tuple(config.get("background", [0, 0, 0]))
 
         self._blink_timer = 0.0
@@ -130,6 +133,22 @@ class ProceduralFaceRenderer:
         mouth_open = mouth_base + self._mouth_level * params.get("mouth_sensitivity", 0.6)
         mouth_open = _clamp01(mouth_open)
         self._draw_mouth((w // 2, int(h * 0.7)), mouth_width, mouth_height, mouth_curve, mouth_open, mouth_color)
+
+        if listening and self.listening_glow_alpha > 0.0:
+            pulse = 0.5 + 0.5 * math.sin(self._listening_phase)
+            alpha = int(255 * self.listening_glow_alpha * pulse)
+            if alpha > 0:
+                overlay = pygame.Surface(self.screen_size, pygame.SRCALPHA)
+                color = (
+                    self.listening_glow_color[0],
+                    self.listening_glow_color[1],
+                    self.listening_glow_color[2],
+                    alpha,
+                )
+                thickness = max(2, self.listening_glow_thickness)
+                rect = overlay.get_rect().inflate(-thickness, -thickness)
+                pygame.draw.rect(overlay, color, rect, width=thickness)
+                self.surface.blit(overlay, (0, 0))
 
         return self.surface
 

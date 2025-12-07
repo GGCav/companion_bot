@@ -160,6 +160,9 @@ expression:
       speaking_rest_factor: 0.35  # Fractional mouth openness on low flap
       listening_pulse_speed: 1.5
       listening_pulse_strength: 0.08
+      listening_glow_color: [0, 200, 255]
+      listening_glow_alpha: 0.35
+      listening_glow_thickness: 6
       # Optional per-emotion overrides live under presets:
       # presets:
       #   happy:
