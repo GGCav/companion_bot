@@ -944,15 +944,21 @@ class EmotionDisplay:
 
         # Side effects (tts/sound/hardware) via callback or command
         if self.effect_callback:
-            try:
-                self.effect_callback(effect)
-            except (
-                RuntimeError,
-                ValueError,
-                OSError,
-                TypeError,
-            ) as exc:  # pragma: no cover
-                logger.error("Effect callback failed: %s", exc)
+            # Run callback asynchronously so the display loop keeps discarding
+            # touch events while petting is active; blocking here would let
+            # pygame queue grow and replay on release.
+            def _cb_wrapper():
+                try:
+                    self.effect_callback(effect)
+                except (
+                    RuntimeError,
+                    ValueError,
+                    OSError,
+                    TypeError,
+                ) as exc:  # pragma: no cover
+                    logger.error("Effect callback failed: %s", exc)
+
+            threading.Thread(target=_cb_wrapper, daemon=True).start()
         else:
             # As a fallback, push to command queue
             self.command_queue.put({
