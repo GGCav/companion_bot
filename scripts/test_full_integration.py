@@ -343,6 +343,13 @@ class IntegrationTest:
 
         if speak_text and self.tts_engine:
             try:
+                # Mark petting active so gestures are ignored
+                if self.emotion_display:
+                    self.emotion_display.command_queue.put({
+                        'type': 'SET_PETTING',
+                        'active': True
+                    })
+
                 # Pause voice pipeline during petting TTS to avoid self-capture
                 if self.voice_pipeline:
                     self.voice_pipeline.pause_listening()
@@ -356,6 +363,13 @@ class IntegrationTest:
                 self.stt_mute_until = time.time() + tail
                 if self.voice_pipeline:
                     self.voice_pipeline.resume_listening()
+
+                # Clear petting active after tail
+                if self.emotion_display:
+                    self.emotion_display.command_queue.put({
+                        'type': 'SET_PETTING',
+                        'active': False
+                    })
             except Exception as exc:  # pragma: no cover
                 logger.error(f"Gesture TTS failed: {exc}")
 

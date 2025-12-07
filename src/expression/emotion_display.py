@@ -281,6 +281,7 @@ class DisplayState:
         self.last_gesture_time: float = 0.0
         self.pending_tap_time: float = 0.0
         self.gesture_busy_until: float = 0.0
+        self.petting_active: bool = False
 
 
 class EmotionDisplay:
@@ -497,6 +498,10 @@ class EmotionDisplay:
             elif cmd_type == 'APPLY_EFFECT':
                 effect = cmd.get('effect', {})
                 self._apply_effect(effect)
+
+            elif cmd_type == 'SET_PETTING':
+                active = cmd.get('active', False)
+                self.state.petting_active = bool(active)
 
     def _start_emotion_transition(self, emotion: str, duration: float):
         """Start transition to new emotion"""
@@ -881,6 +886,8 @@ class EmotionDisplay:
         if now - self.state.last_gesture_time < self.gesture_cooldown:
             return
         if now < self.state.gesture_busy_until:
+            return
+        if self.state.petting_active:
             return
         self.state.last_gesture_time = now
 
