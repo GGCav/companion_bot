@@ -280,6 +280,7 @@ class DisplayState:
         self.speaking_phase: float = 0.0
         self.last_gesture_time: float = 0.0
         self.pending_tap_time: float = 0.0
+        self.gesture_busy_until: float = 0.0
 
 
 class EmotionDisplay:
@@ -314,6 +315,9 @@ class EmotionDisplay:
         )
         self.effect_queue_cooldown = float(
             self.touch_thresholds.get('effect_cooldown', 0.4)
+        )
+        self.effect_busy_window = float(
+            self.touch_thresholds.get('effect_busy', 1.2)
         )
         self.effect_callback: Optional[Callable[[Dict], None]] = None
 
@@ -875,6 +879,8 @@ class EmotionDisplay:
         now = time.time()
         if now - self.state.last_gesture_time < self.gesture_cooldown:
             return
+        if now < self.state.gesture_busy_until:
+            return
         self.state.last_gesture_time = now
 
         effect = self.gesture_effects.get(gesture)
@@ -910,6 +916,9 @@ class EmotionDisplay:
                 'type': 'APPLY_EFFECT',
                 'effect': effect
             })
+
+        # Lock out further gestures while effect is active
+        self.state.gesture_busy_until = now + self.effect_busy_window
 
     def _apply_effect(self, effect: Dict):
         """
