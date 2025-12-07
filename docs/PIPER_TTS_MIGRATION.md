@@ -38,7 +38,7 @@ speech:
 
     piper:
       binary_path: "/home/pi/piper/piper"
-      model_path: "/home/pi/piper/en_US-amy-medium.onnx"
+      model_path: "/home/pi/piper/en_US-patrick-medium.onnx"
       length_scale: 1.0  # 1.0 = normal, 1.2 = slower, 0.8 = faster
       temp_dir: "/tmp"
       sample_rate: 22050
@@ -192,7 +192,7 @@ ls -l /home/pi/piper/piper
 
 **Solution**: Verify model file exists
 ```bash
-ls -l /home/pi/piper/en_US-amy-medium.onnx
+ls -l /home/pi/piper/en_US-patrick-medium.onnx
 ```
 
 ### No Audio Output
@@ -207,7 +207,7 @@ ls -l /home/pi/piper/en_US-amy-medium.onnx
 
 **Solution**:
 - Check Piper binary is executable: `chmod +x /home/pi/piper/piper`
-- Test manually: `echo "Hello" | /home/pi/piper/piper --model /home/pi/piper/en_US-amy-medium.onnx --output_file /tmp/test.wav`
+- Test manually: `echo "Hello" | /home/pi/piper/piper --model /home/pi/piper/en_US-patrick-medium.onnx--output_file /tmp/test.wav`
 
 ### Garbled/Fast/Slow Speech
 
@@ -264,8 +264,8 @@ Load different voice models for different emotion groups:
 ### 3. Optimize Synthesis Speed
 
 Use lower quality model for faster synthesis:
-- `en_US-amy-low.onnx` - Faster (~300ms)
-- `en_US-amy-medium.onnx` - Balanced (~500ms) ← Current
+- `en_US-patrick-medium.onnx` - Faster (~300ms)
+- `en_US-patrick-medium.onnx` - Balanced (~500ms) ← Current
 - `en_US-amy-high.onnx` - Best quality (~800ms)
 
 ---
@@ -299,7 +299,7 @@ speech:
     piper:
       # Required
       binary_path: "/home/pi/piper/piper"
-      model_path: "/home/pi/piper/en_US-amy-medium.onnx"
+      model_path: "/home/pi/piper/en_US-patrick-medium.onnx"
 
       # Optional (with defaults)
       length_scale: 1.0      # Speech rate (1.0 = normal)
