@@ -34,7 +34,8 @@ class AudioOutput:
         # Initialize pygame mixer for sound effects
         pygame.mixer.init(
             frequency=self.audio_config['sample_rate'],
-            channels=self.audio_config['channels']
+            channels=self.audio_config['channels'],
+            buffer=self.audio_config['buffer_size']
         )
 
         # Audio playback queue
