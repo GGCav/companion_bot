@@ -288,6 +288,8 @@ class IntegrationTest:
             self.latency_monitor.start_timer('init_expression')
 
             self.emotion_display = EmotionDisplay(self.config)
+            # Wire gesture effects into TTS/sound pipeline
+            self.emotion_display.set_effect_callback(self._on_gesture_effect)
             self.emotion_display.start()
 
             self.latency_monitor.end_timer('init_expression')
@@ -324,6 +326,27 @@ class IntegrationTest:
             logger.warning(f"Voice pipeline initialization failed: {e}")
             self.voice_pipeline = None
 
+    def _on_gesture_effect(self, effect: dict):
+        """
+        Handle touch/petting gesture effects: speak or play sound.
+        """
+        if not effect:
+            return
+
+        # Emotion is already handled in EmotionDisplay; only handle side effects here.
+        speak_text = effect.get('speak')
+        sound_path = effect.get('sound')
+        emotion = effect.get('emotion')
+
+        if speak_text and self.tts_engine:
+            try:
+                self.tts_engine.speak(speak_text, emotion=emotion, wait=False)
+            except Exception as exc:  # pragma: no cover
+                logger.error(f"Gesture TTS failed: {exc}")
+
+        if sound_path:
+            # If audio output queue/player exists, route here. Not present in this test harness.
+            logger.info("Gesture sound requested: %s (not wired to player in this script)", sound_path)
     def _on_speech_start(self):
         """Callback when speech detection starts recording"""
         if self.emotion_display:
