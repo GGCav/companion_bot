@@ -277,6 +277,7 @@ class DisplayState:
         self.toggle_interval: float = 0.15  # Speaking toggle interval
         self.speaking_level: float = 0.0
         self.speaking_level_target: float = 0.0
+        self.speaking_phase: float = 0.0
 
 
 class EmotionDisplay:
@@ -298,6 +299,9 @@ class EmotionDisplay:
         self.procedural_config = self.display_config.get('procedural_face', {})
         self.speaking_rest_factor = self.procedural_config.get(
             'speaking_rest_factor', 0.35
+        )
+        self.speaking_wave_hz = self.procedural_config.get(
+            'speaking_wave_hz', 6.0
         )
 
         # Extract configuration
@@ -457,6 +461,10 @@ class EmotionDisplay:
                 )
                 if not active:
                     self.state.speaking_frame_toggle = False
+                    self.state.speaking_phase = 0.0
+                else:
+                    # Reset phase on start to avoid mid-wave jump
+                    self.state.speaking_phase = 0.0
                 logger.debug("Speaking: %s", active)
 
     def _start_emotion_transition(self, emotion: str, duration: float):
@@ -509,16 +517,20 @@ class EmotionDisplay:
                     1e-3, self.procedural_config.get('speaking_smooth', 8.0)
                 )
                 blend = 1.0 - math.exp(-smooth * max(delta_time, 0.0))
-                target_level = (
-                    self.state.speaking_level_target
-                    if self.state.is_speaking
-                    else 0.0
-                )
-                if (
-                    self.state.is_speaking
-                    and not self.state.speaking_frame_toggle
-                ):
-                    target_level *= self.speaking_rest_factor
+                target_level = 0.0
+                if self.state.is_speaking:
+                    # Sine wave drives continuous mouth flaps while speaking
+                    self.state.speaking_phase += (
+                        2.0
+                        * math.pi
+                        * self.speaking_wave_hz
+                        * max(delta_time, 0.0)
+                    )
+                    wave = 0.5 + 0.5 * math.sin(self.state.speaking_phase)
+                    target_level = self.state.speaking_level_target * (
+                        self.speaking_rest_factor
+                        + (1 - self.speaking_rest_factor) * wave
+                    )
                 self.state.speaking_level = (
                     (1 - blend) * self.state.speaking_level
                     + blend * target_level
