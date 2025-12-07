@@ -321,10 +321,8 @@ speech:
     language: "en"
 
     whisper:
-      model_size: "tiny"  # tiny is fastest on Pi; trade accuracy for speed
+      model_size: "base"  # tiny, base, small (base is good for Pi)
       device: "cpu"
-      max_audio_seconds: 7.0   # hard trim per utterance
-      downsample_rate: 16000   # resample to 16k for faster STT
 
     vosk:
       model_path: "models/vosk-model-small-en-us-0.15"

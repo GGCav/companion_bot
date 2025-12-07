@@ -35,12 +35,6 @@ class STTEngine:
         self.model_size = self.whisper_config['model_size']  # tiny, base, small
         self.device = self.whisper_config.get('device', 'cpu')
         self.language = self.stt_config.get('language', 'en')
-        self.max_audio_seconds = float(
-            self.whisper_config.get('max_audio_seconds', 7.0)
-        )
-        self.downsample_rate = int(
-            self.whisper_config.get('downsample_rate', 16000)
-        )
 
         # Performance tracking
         self.total_transcriptions = 0
@@ -99,9 +93,8 @@ class STTEngine:
         start_time = time.time()
 
         try:
-            processed_audio = self._prepare_audio(audio_data)
             # Save audio to temporary WAV file (Whisper expects file)
-            temp_file = self._save_temp_audio(processed_audio)
+            temp_file = self._save_temp_audio(audio_data)
 
             # Transcribe with Whisper
             result = self.model.transcribe(
@@ -163,35 +156,6 @@ class STTEngine:
                 'error': str(e)
             }
 
-    def _prepare_audio(self, audio_data: bytes) -> bytes:
-        """
-        Trim and downsample audio to reduce STT latency.
-        """
-        try:
-            sample_rate = self.audio_config['sample_rate']
-            pcm = np.frombuffer(audio_data, dtype=np.int16)
-
-            # Trim to max duration
-            max_samples = int(self.max_audio_seconds * sample_rate)
-            if len(pcm) > max_samples:
-                pcm = pcm[:max_samples]
-
-            # Downsample if configured
-            if self.downsample_rate and self.downsample_rate < sample_rate:
-                target_len = int(
-                    len(pcm) * (self.downsample_rate / sample_rate)
-                )
-                if target_len > 0:
-                    x_old = np.linspace(0, 1, len(pcm), endpoint=False)
-                    x_new = np.linspace(0, 1, target_len, endpoint=False)
-                    pcm = np.interp(x_new, x_old, pcm).astype(np.int16)
-                    sample_rate = self.downsample_rate
-
-            return pcm.tobytes()
-        except Exception as exc:  # pragma: no cover
-            logger.warning("Audio preprocess failed, using raw audio: %s", exc)
-            return audio_data
-
     def transcribe_audio_array(self, audio_array: np.ndarray, sample_rate: int = 16000) -> Dict[str, any]:
         """
         Transcribe audio from numpy array
@@ -230,9 +194,7 @@ class STTEngine:
             with wave.open(str(temp_file), 'wb') as wf:
                 wf.setnchannels(self.audio_config['channels'])
                 wf.setsampwidth(2)  # 16-bit = 2 bytes
-                # If we downsampled, reflect that in header
-                rate = self.downsample_rate or self.audio_config['sample_rate']
-                wf.setframerate(rate)
+                wf.setframerate(self.audio_config['sample_rate'])
                 wf.writeframes(audio_data)
 
             return temp_file
