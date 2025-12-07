@@ -206,6 +206,7 @@ class IntegrationTest:
         self.stt_mute_until = 0.0
         # Base mute window to avoid STT hearing petting TTS
         self.gesture_tts_mute_secs = 6.0
+        self.petting_lock = False
         self.input_mode = 'text'  # 'text' or 'voice'
 
         # Initialize all components
@@ -342,6 +343,10 @@ class IntegrationTest:
         emotion = effect.get('emotion')
 
         if speak_text and self.tts_engine:
+            # Hard lock to prevent stacking
+            if self.petting_lock:
+                return
+            self.petting_lock = True
             try:
                 # Mark petting active so gestures are ignored
                 if self.emotion_display:
@@ -372,6 +377,8 @@ class IntegrationTest:
                     })
             except Exception as exc:  # pragma: no cover
                 logger.error(f"Gesture TTS failed: {exc}")
+            finally:
+                self.petting_lock = False
 
         if sound_path:
             # If audio output queue/player exists, route here. Not present in this test harness.
