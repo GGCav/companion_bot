@@ -358,6 +358,9 @@ class IntegrationTest:
                 # Pause voice pipeline during petting TTS to avoid self-capture
                 if self.voice_pipeline:
                     self.voice_pipeline.pause_listening()
+                # Visually and logically exit listening while muted
+                if self.emotion_display:
+                    self.emotion_display.set_listening(False)
                 self.stt_mute_until = time.time() + 0.1
 
                 # Play petting line synchronously
@@ -396,11 +399,11 @@ class IntegrationTest:
 
     def _on_transcription_complete(self, result: dict):
         """Callback when transcription completes"""
+        if self.emotion_display:
+            self.emotion_display.set_listening(False)
         if time.time() < self.stt_mute_until:
             logger.debug("Ignoring transcription during gesture TTS mute window")
             return
-        if self.emotion_display:
-            self.emotion_display.set_listening(False)
         logger.debug(f"Transcription complete: {result.get('text', '')}")
 
     def _choose_input_mode(self):
