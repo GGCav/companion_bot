@@ -184,11 +184,11 @@ expression:
         double_tap_window: 0.35 # seconds
         long_press: 0.6         # seconds
         drag_distance: 60       # pixels (stroke)
-        scroll_distance: 80     # pixels (vertical)
+        circle_distance: 140    # pixels total path to qualify as circle
+        circle_return: 45       # max offset from start to count as circle
         cooldown: 0.8           # seconds between gestures
         effect_cooldown: 0.4    # seconds between triggered effects (TTS/sound)
         effect_busy: 1.2        # seconds to lock out further gestures while handling one
-        scroll_vs_drag_ratio: 1.2 # vertical dominance multiplier for scroll vs drag
       gesture_effects:
         tap:
           emotion: happy
@@ -204,7 +204,7 @@ expression:
           speak: "Hehe, that tickles!"
         scroll:
           emotion: curious
-          speak: "What's up?"
+          speak: "Round and round!"
 
     gpio:
       enabled: true
