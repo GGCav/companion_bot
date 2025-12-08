@@ -4,6 +4,7 @@ Full System Integration Test
 Tests all components (STT, LLM, TTS, Expression, Memory) with latency monitoring
 """
 
+import os
 import sys
 import time
 import json
@@ -26,6 +27,13 @@ except ImportError:
         CYAN = GREEN = YELLOW = RED = ''
     class Style:
         RESET_ALL = ''
+
+try:
+    import psutil
+    PSUTIL_AVAILABLE = True
+except ImportError:
+    PSUTIL_AVAILABLE = False
+    psutil = None
 
 import yaml
 
@@ -176,6 +184,126 @@ class LatencyMonitor:
         print(f"\n{Fore.CYAN}{'─'*70}{Style.RESET_ALL}\n")
 
 
+class ResourceMonitor:
+    """
+    Collects RAM usage snapshots for the main process and optional helpers.
+    Results are only surfaced at the end with the final report.
+    """
+
+    def __init__(self):
+        self.processes = {}
+        self.samples = defaultdict(list)
+
+        if PSUTIL_AVAILABLE:
+            self.processes['main'] = psutil.Process(os.getpid())
+
+    def attach_process_by_name(self, name_substring: str, label: str = None) -> bool:
+        """Attach an external process (e.g., ollama) by name substring."""
+        if not PSUTIL_AVAILABLE:
+            return False
+
+        label = label or name_substring
+        proc = self._find_process(name_substring)
+        if proc:
+            self.processes[label] = proc
+            return True
+        return False
+
+    def _find_process(self, substring: str):
+        """Find first process whose name contains the substring."""
+        for proc in psutil.process_iter(['name']):
+            try:
+                name = proc.info.get('name') or ''
+                if substring.lower() in name.lower():
+                    return proc
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                continue
+        return None
+
+    def capture_snapshot(self, label: str):
+        """Record current RSS (MB) for all tracked processes."""
+        if not PSUTIL_AVAILABLE:
+            return
+
+        for name, proc in list(self.processes.items()):
+            try:
+                rss_mb = proc.memory_full_info().rss / (1024 ** 2)
+                self.samples[name].append({'label': label, 'mb': rss_mb})
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                # Drop dead or inaccessible processes
+                self.processes.pop(name, None)
+
+    def get_statistics(self) -> dict:
+        """Return aggregated stats per process and per checkpoint label."""
+        if not PSUTIL_AVAILABLE:
+            return {'enabled': False, 'reason': 'psutil not installed'}
+
+        stats = {}
+        for name, entries in self.samples.items():
+            if not entries:
+                continue
+
+            values = np.array([e['mb'] for e in entries], dtype=float)
+            label_stats = {}
+            for lbl in {e['label'] for e in entries}:
+                lbl_values = np.array(
+                    [e['mb'] for e in entries if e['label'] == lbl],
+                    dtype=float
+                )
+                label_stats[lbl] = {
+                    'min_mb': float(np.min(lbl_values)),
+                    'max_mb': float(np.max(lbl_values)),
+                    'avg_mb': float(np.mean(lbl_values)),
+                    'samples': int(len(lbl_values)),
+                }
+
+            stats[name] = {
+                'overall': {
+                    'min_mb': float(np.min(values)),
+                    'max_mb': float(np.max(values)),
+                    'avg_mb': float(np.mean(values)),
+                    'samples': int(len(values)),
+                },
+                'by_label': label_stats
+            }
+        return stats
+
+    def print_summary(self):
+        """Print memory usage summary; meant to run once at the end."""
+        if not PSUTIL_AVAILABLE:
+            print(f"{Fore.YELLOW}RAM tracking disabled (psutil not installed){Style.RESET_ALL}")
+            return
+
+        stats = self.get_statistics()
+        if not stats:
+            print(f"{Fore.YELLOW}No RAM samples recorded{Style.RESET_ALL}")
+            return
+        if stats.get('enabled') is False:
+            print(f"{Fore.YELLOW}RAM tracking disabled ({stats.get('reason')}){Style.RESET_ALL}")
+            return
+
+        print(f"{Fore.CYAN}{'='*70}{Style.RESET_ALL}")
+        print(f"{Fore.CYAN}📈 RAM USAGE (MB){Style.RESET_ALL}")
+        print(f"{Fore.CYAN}{'='*70}{Style.RESET_ALL}")
+
+        for name, data in stats.items():
+            overall = data.get('overall', {})
+            print(f"{Fore.GREEN}{name}:{Style.RESET_ALL} "
+                  f"avg={overall.get('avg_mb', 0):.1f} "
+                  f"max={overall.get('max_mb', 0):.1f} "
+                  f"samples={overall.get('samples', 0)}")
+
+            by_label = data.get('by_label', {})
+            if by_label:
+                print("  by checkpoint:")
+                for lbl, lstats in sorted(by_label.items()):
+                    print(f"    {lbl:12s} avg={lstats['avg_mb']:.1f} "
+                          f"max={lstats['max_mb']:.1f} "
+                          f"samples={lstats['samples']}")
+
+        print(f"{Fore.CYAN}{'─'*70}{Style.RESET_ALL}\n")
+
+
 class IntegrationTest:
     """
     Main integration test orchestrator
@@ -191,6 +319,7 @@ class IntegrationTest:
         """
         self.config = config
         self.latency_monitor = LatencyMonitor()
+        self.resource_monitor = ResourceMonitor()
         self.session_id = None
         self.user_id = None
 
@@ -218,6 +347,7 @@ class IntegrationTest:
         self._init_tts()
         self._init_expression()
         self._init_voice_pipeline()
+        self.resource_monitor.capture_snapshot('post_init')
         print(f"{Fore.GREEN}All components initialized!{Style.RESET_ALL}\n")
 
     def _init_memory(self):
@@ -253,6 +383,8 @@ class IntegrationTest:
             self.latency_monitor.start_timer('init_llm')
 
             self.ollama_client = OllamaClient(self.config)
+            # Track external Ollama daemon RAM if available
+            self.resource_monitor.attach_process_by_name('ollama', label='ollama')
 
             self.conversation_manager = ConversationManager(
                 self.config,
@@ -457,6 +589,7 @@ class IntegrationTest:
                       f"{Style.RESET_ALL}")
                 print(f"{Fore.CYAN}[STT: {stt_time:.2f}s, "
                       f"confidence: {confidence:.2f}]{Style.RESET_ALL}")
+                self.resource_monitor.capture_snapshot('stt')
 
                 return transcription
             else:
@@ -550,6 +683,7 @@ class IntegrationTest:
         print()  # New line after bot response
 
         llm_duration = self.latency_monitor.end_timer('llm_total')
+        self.resource_monitor.capture_snapshot('llm')
 
         # Calculate tokens per second if available
         if llm_duration > 0 and segments:
@@ -581,6 +715,7 @@ class IntegrationTest:
         # End TTS total if it started
         if first_token_recorded and tts_started:
             self.latency_monitor.end_timer('tts_total')
+            self.resource_monitor.capture_snapshot('tts')
         elif not tts_started:
             # No segments spoken; ensure timer not left running
             self.latency_monitor.current_timers.pop('tts_total', None)
@@ -594,6 +729,9 @@ class IntegrationTest:
         if first_token_recorded and tts_started:
             perceived = tts_start - turn_start
             self.latency_monitor.record_metric('perceived_latency', perceived)
+
+        # Capture post-turn RAM state (main + attached procs)
+        self.resource_monitor.capture_snapshot('turn_end')
 
     def run_interactive_demo(self):
         """Main interactive conversation loop"""
@@ -707,6 +845,7 @@ class IntegrationTest:
                 'tts': 'OK' if self.tts_engine else 'ERROR',
                 'expression': 'OK' if self.emotion_display else 'WARNING'
             },
+            'resource_usage': self.resource_monitor.get_statistics(),
             'configuration': {
                 'llm_model': self.config['llm']['ollama']['model'],
                 'tts_provider': self.config['speech']['tts']['provider'],
@@ -727,6 +866,7 @@ class IntegrationTest:
 
         # Print summary
         self.latency_monitor.print_summary()
+        self.resource_monitor.print_summary()
 
     def cleanup(self):
         """Clean up all components"""
