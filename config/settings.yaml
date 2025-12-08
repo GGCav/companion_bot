@@ -24,7 +24,7 @@ audio:
     noise_reduction: true
     auto_gain: true
     vad_aggressiveness: 2  # Voice Activity Detection: 0-3 (3 = most aggressive)
-    silence_threshold: 180  # Amplitude threshold for silence detection (initial noise floor estimate)
+    silence_threshold: 150  # Amplitude threshold for silence detection (initial noise floor estimate)
     silence_duration: 1.5  # Seconds of silence before stopping recording
 
   wake_word:
