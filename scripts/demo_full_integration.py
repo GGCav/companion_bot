@@ -209,6 +209,7 @@ class IntegrationTest:
         self.petting_lock = False
         # Default to voice mode for unattended autorun
         self.input_mode = 'voice'  # 'text' or 'voice'
+        self.shutdown_requested = False
 
         # Initialize all components
         print(f"{Fore.CYAN}Initializing components...{Style.RESET_ALL}")
@@ -295,6 +296,8 @@ class IntegrationTest:
             self.emotion_display = EmotionDisplay(self.config)
             # Wire gesture effects into TTS/sound pipeline
             self.emotion_display.set_effect_callback(self._on_gesture_effect)
+            # Exit GPIO should shut down whole app
+            self.emotion_display.set_exit_callback(self._on_exit_button)
             self.emotion_display.start()
 
             self.latency_monitor.end_timer('init_expression')
@@ -618,6 +621,8 @@ class IntegrationTest:
         conversation_count = 0
 
         while True:
+            if self.shutdown_requested:
+                break
             try:
                 # Get user input based on mode
                 if self.input_mode == 'voice':
@@ -625,6 +630,8 @@ class IntegrationTest:
 
                     # Handle empty or None
                     if not user_input:
+                        if self.shutdown_requested:
+                            break
                         continue
 
                 else:
@@ -666,6 +673,17 @@ class IntegrationTest:
 
         # Save final report
         self._save_final_report(conversation_count)
+
+    def _on_exit_button(self):
+        """Handle GPIO exit button: request full shutdown."""
+        logger.info("Exit button pressed - requesting shutdown")
+        self.shutdown_requested = True
+        # Stop voice pipeline immediately to unblock waits
+        if self.voice_pipeline:
+            try:
+                self.voice_pipeline.stop()
+            except Exception as exc:
+                logger.error("Voice pipeline stop error: %s", exc)
 
     def _save_final_report(self, conversation_count: int):
         """

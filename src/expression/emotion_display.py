@@ -321,6 +321,7 @@ class EmotionDisplay:
             self.touch_thresholds.get('effect_busy', 1.2)
         )
         self.effect_callback: Optional[Callable[[Dict], None]] = None
+        self.exit_callback: Optional[Callable[[], None]] = None
 
         # Extract configuration
         screen_size = tuple(self.display_config.get('resolution', [320, 240]))
@@ -428,6 +429,11 @@ class EmotionDisplay:
             # Check GPIO exit button
             if self._check_gpio_exit():
                 logger.info("GPIO exit button pressed")
+                if self.exit_callback:
+                    try:
+                        self.exit_callback()
+                    except Exception as exc:  # pragma: no cover
+                        logger.error("Exit callback failed: %s", exc)
                 self.is_running = False
                 break
 
@@ -755,6 +761,12 @@ class EmotionDisplay:
             callback: Callable receiving a dict with effect info.
         """
         self.effect_callback = callback
+
+    def set_exit_callback(self, callback: Callable[[], None]):
+        """
+        Set a callback invoked when the GPIO exit button is pressed.
+        """
+        self.exit_callback = callback
 
     def cleanup(self):
         """Clean up display resources and GPIO"""
