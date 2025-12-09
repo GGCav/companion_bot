@@ -899,13 +899,13 @@ class EmotionDisplay:
             self.pending_tap_time = now
             return None
 
-        # Circular motion: long path but ends near origin
-        if dist >= circle_dist and (abs(dx) + abs(dy)) <= circle_return:
-            return "scroll"
-
         # Drag / stroke
         if dist >= drag_dist:
             return "drag"
+
+        # Circular motion: long path but ends near origin
+        if dist >= circle_dist and (abs(dx) + abs(dy)) <= circle_return:
+            return "scroll"
 
         return None
 
