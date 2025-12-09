@@ -900,7 +900,7 @@ class EmotionDisplay:
             return None
 
         # Drag / stroke
-        if dist >= drag_dist:
+        if dist >= drag_dist and (abs(dx) + abs(dy)) > circle_return:
             return "drag"
 
         # Circular motion: long path but ends near origin
