@@ -356,6 +356,7 @@ class EmotionDisplay:
         self._last_delta_time = 0.0
 
         # Touch state
+        self._touch_start_pos: Optional[Tuple[int, int]] = None
         self._touch_down_pos: Optional[Tuple[int, int]] = None
         self._touch_down_time: float = 0.0
         self._last_tap_time: float = 0.0
@@ -826,6 +827,7 @@ class EmotionDisplay:
             return
 
         if event.type == pygame.MOUSEBUTTONDOWN:
+            self._touch_start_pos = event.pos
             self._touch_down_pos = event.pos
             self._touch_down_time = time.time()
             self._drag_distance = 0.0
@@ -838,15 +840,16 @@ class EmotionDisplay:
                 self._touch_down_pos = event.pos
 
         elif event.type == pygame.MOUSEBUTTONUP:
-            if self._touch_down_pos is None:
+            if self._touch_start_pos is None:
                 return
             up_pos = event.pos
-            down_pos = self._touch_down_pos
+            start_pos = self._touch_start_pos
             duration = time.time() - self._touch_down_time
             dist = self._drag_distance
-            dx = up_pos[0] - down_pos[0]
-            dy = up_pos[1] - down_pos[1]
+            dx = up_pos[0] - start_pos[0]
+            dy = up_pos[1] - start_pos[1]
 
+            self._touch_start_pos = None
             self._touch_down_pos = None
             self._drag_distance = 0.0
 
@@ -884,7 +887,8 @@ class EmotionDisplay:
 
         now = time.time()
         closure = abs(dx) + abs(dy)
-        closure_ratio = closure / max(dist, 1e-6)  # how much the end returns toward the start
+        # how much the end returns toward the start
+        closure_ratio = closure / max(dist, 1e-6)
 
         # Long press
         if duration >= long_press_time and dist < drag_dist:
