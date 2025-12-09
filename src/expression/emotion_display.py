@@ -883,6 +883,8 @@ class EmotionDisplay:
         circle_return = float(self.touch_thresholds.get('circle_return', 45))
 
         now = time.time()
+        closure = abs(dx) + abs(dy)
+        closure_ratio = closure / max(dist, 1e-6)  # how much the end returns toward the start
 
         # Long press
         if duration >= long_press_time and dist < drag_dist:
@@ -899,13 +901,17 @@ class EmotionDisplay:
             self.pending_tap_time = now
             return None
 
-        # Drag / stroke
-        if dist >= drag_dist and (abs(dx) + abs(dy)) > circle_return:
-            return "drag"
-
         # Circular motion: long path but ends near origin
-        if dist >= circle_dist and (abs(dx) + abs(dy)) <= circle_return:
+        if (
+            dist >= circle_dist
+            and closure <= circle_return
+            and closure_ratio <= 0.25  # strong return to origin
+        ):
             return "scroll"
+
+        # Drag / stroke
+        if dist >= drag_dist:
+            return "drag"
 
         return None
 
