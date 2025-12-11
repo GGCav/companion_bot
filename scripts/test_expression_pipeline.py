@@ -10,13 +10,13 @@ import time
 import logging
 from pathlib import Path
 
-# Add src to path
+
 sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
 
 import yaml
 from expression import EmotionDisplay
 
-# Configure logging
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -72,12 +72,12 @@ def demo_speaking_animation(display: EmotionDisplay):
     display.set_emotion('happy', transition_duration=0.5)
     time.sleep(1.0)
 
-    # Activate speaking animation
+
     display.set_speaking(True)
     logger.info("Speaking animation started")
     time.sleep(3.0)
 
-    # Deactivate
+
     display.set_speaking(False)
     logger.info("Speaking animation stopped")
     time.sleep(1.0)
@@ -92,12 +92,12 @@ def demo_listening_state(display: EmotionDisplay):
     """
     logger.info("Demonstrating listening state")
 
-    # Show listening
+
     display.set_listening(True)
     logger.info("Listening state activated")
     time.sleep(3.0)
 
-    # Return to emotion
+
     display.set_listening(False)
     logger.info("Listening state deactivated")
     time.sleep(1.0)
@@ -112,10 +112,10 @@ def main():
     print("Press GPIO pin 27 to exit (or Ctrl+C)")
     print("─" * 70)
 
-    # Load configuration
+
     config = load_config()
 
-    # Initialize emotion display
+
     try:
         display = EmotionDisplay(config)
         logger.info("EmotionDisplay initialized successfully")
@@ -124,11 +124,11 @@ def main():
         logger.error("Make sure emotion sprites exist in src/display/")
         return 1
 
-    # Start display thread
+
     display.start()
     logger.info("Display started")
 
-    # Define demo sequence
+
     all_emotions = [
         'happy',
         'excited',
@@ -145,24 +145,24 @@ def main():
     ]
 
     try:
-        # Demo 1: Emotion cycle
+
         print("\n🔄 Demo 1: Cycling through all 12 emotions...")
         demo_emotion_cycle(display, all_emotions, duration=2.5)
 
-        # Demo 2: Speaking animation
+
         print("\n🗣️  Demo 2: Speaking animation...")
         demo_speaking_animation(display)
 
-        # Demo 3: Listening state
+
         print("\n🎤 Demo 3: Listening state...")
         demo_listening_state(display)
 
-        # Demo 4: Rapid emotion changes
+
         print("\n⚡ Demo 4: Rapid emotion changes...")
         rapid_emotions = ['excited', 'happy', 'surprised', 'playful']
         demo_emotion_cycle(display, rapid_emotions, duration=1.5)
 
-        # Demo 5: Long transitions
+
         print("\n🌅 Demo 5: Slow smooth transitions...")
         display.set_emotion('happy', transition_duration=2.0)
         time.sleep(3.0)
@@ -183,12 +183,12 @@ def main():
         return 1
 
     finally:
-        # Cleanup
+
         print("\n🧹 Cleaning up...")
         display.cleanup()
         print("✅ Cleanup complete")
 
-    # Summary
+
     print("\n" + "="*70)
     print("DEMO SUMMARY")
     print("="*70)

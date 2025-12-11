@@ -26,7 +26,6 @@ class Database:
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
 
-        # Initialize database schema
         self._init_database()
 
         logger.info(f"Database initialized at {self.db_path}")
@@ -40,7 +39,7 @@ class Database:
             sqlite3.Connection
         """
         conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row  # Access columns by name
+        conn.row_factory = sqlite3.Row
         try:
             yield conn
             conn.commit()
@@ -56,7 +55,6 @@ class Database:
         with self.get_connection() as conn:
             cursor = conn.cursor()
 
-            # Users table
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS users (
                     user_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -69,7 +67,6 @@ class Database:
                 )
             ''')
 
-            # Conversations table
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS conversations (
                     conversation_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -84,7 +81,6 @@ class Database:
                 )
             ''')
 
-            # Preferences table
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS preferences (
                     preference_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -97,7 +93,6 @@ class Database:
                 )
             ''')
 
-            # Interactions table
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS interactions (
                     interaction_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -110,7 +105,6 @@ class Database:
                 )
             ''')
 
-            # Create indexes for performance
             cursor.execute('''
                 CREATE INDEX IF NOT EXISTS idx_conversations_user
                 ON conversations(user_id)

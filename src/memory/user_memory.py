@@ -27,8 +27,6 @@ class UserMemory:
         self.db = database
         logger.info("UserMemory initialized")
 
-    # ==================== User Profile Management ====================
-
     def create_user(self, name: str, face_encoding: Optional[bytes] = None) -> int:
         """
         Create new user profile
@@ -158,8 +156,6 @@ class UserMemory:
             logger.error(f"Error deleting user: {e}")
             return False
 
-    # ==================== Preferences Management ====================
-
     def set_preference(
         self,
         user_id: int,
@@ -259,8 +255,6 @@ class UserMemory:
             logger.error(f"Error deleting preference: {e}")
             return False
 
-    # ==================== Interaction Logging ====================
-
     def record_interaction(
         self,
         user_id: int,
@@ -341,8 +335,6 @@ class UserMemory:
 
         results = self.db.execute_query(query, (user_id,))
         return {row['interaction_type']: row['count'] for row in results}
-
-    # ==================== Face Recognition Support ====================
 
     def save_face_encoding(self, user_id: int, face_encoding) -> bool:
         """

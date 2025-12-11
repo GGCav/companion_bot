@@ -10,10 +10,10 @@ import yaml
 import signal
 from pathlib import Path
 
-# Add src to path
+
 sys.path.insert(0, str(Path(__file__).parent / 'src'))
 
-# Configure logging
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -46,23 +46,23 @@ def main():
     logger.info("Companion Bot Starting...")
     logger.info("=" * 60)
 
-    # Load configuration
+
     config = load_config()
 
-    # Create data directories
+
     Path("data/users").mkdir(parents=True, exist_ok=True)
     Path("data/conversations").mkdir(parents=True, exist_ok=True)
     Path("data/logs").mkdir(parents=True, exist_ok=True)
 
     try:
-        # Import core bot (lazy import after config is loaded)
+
         from core.companion_bot import CompanionBot
 
-        # Initialize bot
+
         logger.info("Initializing companion bot...")
         bot = CompanionBot(config)
 
-        # Setup signal handler for graceful shutdown
+
         def signal_handler(sig, frame):
             logger.info("\nShutdown signal received...")
             bot.shutdown()
@@ -71,11 +71,11 @@ def main():
         signal.signal(signal.SIGINT, signal_handler)
         signal.signal(signal.SIGTERM, signal_handler)
 
-        # Start bot
+
         logger.info("Starting companion bot...")
         bot.start()
 
-        # Keep main thread alive
+
         logger.info("Companion bot is running! Press Ctrl+C to stop.")
         while bot.is_running:
             bot.update()

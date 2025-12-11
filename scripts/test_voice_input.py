@@ -9,13 +9,13 @@ import logging
 import time
 from pathlib import Path
 
-# Add src to path
+
 sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
 
 import yaml
 from llm.voice_pipeline import VoicePipeline
 
-# Configure logging (DEBUG level to see VAD details)
+
 logging.basicConfig(
     level=logging.DEBUG,
     format='%(asctime)s - %(levelname)s - %(message)s'
@@ -30,7 +30,7 @@ def main():
     print("🎤 Voice Input Test - Mini Microphone + Whisper")
     print("=" * 70)
 
-    # Load configuration
+
     config_path = Path(__file__).parent.parent / 'config' / 'settings.yaml'
 
     if not config_path.exists():
@@ -42,7 +42,7 @@ def main():
     with open(config_path) as f:
         config = yaml.safe_load(f)
 
-    # Show audio settings
+
     print("\n🔧 Audio Configuration:")
     print(f"  Sample Rate: {config['audio']['input']['sample_rate']} Hz")
     print(f"  Channels: {config['audio']['input']['channels']}")
@@ -54,7 +54,7 @@ def main():
     print(f"  Device: {config['speech']['stt']['whisper']['device']}")
     print(f"  Language: {config['speech']['stt']['language']}")
 
-    # Initialize pipeline
+
     print("\n🚀 Initializing voice pipeline...")
     try:
         pipeline = VoicePipeline(config)
@@ -62,7 +62,7 @@ def main():
         print(f"❌ Failed to initialize pipeline: {e}")
         return 1
 
-    # Test microphone
+
     print("\n🎙️  Testing microphone...")
     if not pipeline.test_microphone():
         print("❌ Microphone test failed!")
@@ -74,7 +74,7 @@ def main():
 
     print("✅ Microphone working!")
 
-    # Set up transcription tracking
+
     transcription_count = 0
 
     def on_transcription(result):
@@ -99,7 +99,7 @@ def main():
     pipeline.set_transcription_callback(on_transcription)
     pipeline.set_speech_callbacks(on_speech_start, on_speech_end)
 
-    # Start pipeline
+
     print("\n✅ Voice pipeline ready!")
     print("\n" + "=" * 70)
     print("Instructions:")
@@ -113,7 +113,7 @@ def main():
     try:
         pipeline.start()
 
-        # Run for a specified time or until interrupted
+
         while True:
             time.sleep(0.1)
 
@@ -123,7 +123,7 @@ def main():
     finally:
         pipeline.cleanup()
 
-        # Show final statistics
+
         stats = pipeline.get_statistics()
 
         print("\n" + "=" * 70)

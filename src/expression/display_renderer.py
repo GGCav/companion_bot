@@ -5,8 +5,8 @@ Handles pygame initialization, image loading, and frame rendering for piTFT
 
 try:
     import pygame  # type: ignore  # noqa: E0401
-except ImportError:  # pragma: no cover
-    pygame = None  # type: ignore
+except ImportError:
+    pygame = None
 import os
 import glob
 import logging
@@ -15,7 +15,7 @@ from typing import Dict, Tuple, Optional, Any
 
 from .procedural_face import ProceduralFaceRenderer
 
-# pylint: disable=import-error
+
 
 logger = logging.getLogger(__name__)
 EmotionFrames = Tuple[pygame.Surface, pygame.Surface]
@@ -50,12 +50,12 @@ class DisplayRenderer:
         self.emotion_images: Dict[str, EmotionFrames] = {}
         self.listening_image: Optional[pygame.Surface] = None
 
-        # Procedural rendering
+
         procedural_config = procedural_config or {}
         self.use_procedural = procedural_config.get('enabled', False)
         self.procedural_renderer: Optional[ProceduralFaceRenderer] = None
 
-        # Initialize pygame with piTFT
+
         self._init_pygame()
 
         if self.use_procedural:
@@ -64,16 +64,16 @@ class DisplayRenderer:
             )
             logger.info("Procedural face renderer enabled")
         else:
-            # Load all emotion sprites
+
             self._load_emotion_images()
 
     def _init_pygame(self):
         """Initialize pygame with piTFT framebuffer or fallback to window"""
         try:
-            # Try piTFT configuration
+
             os.putenv('SDL_VIDEODRIVER', 'fbcon')
             os.putenv('SDL_FBDEV', self.framebuffer)
-            os.putenv('SDL_NOMOUSE', '1')  # Disable mouse cursor
+            os.putenv('SDL_NOMOUSE', '1')
 
             pygame.init()
             pygame.mouse.set_visible(False)
@@ -84,7 +84,7 @@ class DisplayRenderer:
             logger.warning("piTFT initialization failed: %s", e)
             logger.warning("Falling back to window mode for testing")
 
-            # Clear environment variables and retry in window mode
+
             if 'SDL_VIDEODRIVER' in os.environ:
                 del os.environ['SDL_VIDEODRIVER']
             if 'SDL_FBDEV' in os.environ:
@@ -106,36 +106,36 @@ class DisplayRenderer:
             logger.error("Image directory not found: %s", self.image_dir)
             return
 
-        # Find base emotion PNG files (exclude _speaking and _active variants)
+
         base_files = glob.glob(str(self.image_dir / "*.png"))
 
         loaded_count = 0
         for base_path in base_files:
             filename = os.path.basename(base_path)
 
-            # Skip speaking/active frames - they'll be paired later
+
             if "_speaking" in filename or "_active" in filename:
                 continue
 
-            emotion_name = os.path.splitext(filename)[0]  # e.g., "happy"
+            emotion_name = os.path.splitext(filename)[0]
 
-            # Special handling for listening state (not an emotion)
+
             if emotion_name == "listening":
                 self._load_listening_image(base_path)
                 continue
 
-            # Load emotion pair (base + speaking)
+
             try:
                 base_surface = self._load_and_scale_image(base_path)
 
-                # Try to find speaking variant
+
                 speaking_path = self.image_dir / f"{emotion_name}_speaking.png"
                 if speaking_path.exists():
                     speaking_surface = self._load_and_scale_image(
                         str(speaking_path)
                     )
                 else:
-                    # Reuse base frame if no speaking frame exists
+
                     speaking_surface = base_surface
                     logger.warning(
                         "No speaking frame for %s; using base", emotion_name
@@ -153,7 +153,7 @@ class DisplayRenderer:
 
         logger.info("Loaded %s emotion pairs", loaded_count)
 
-        # Validate required emotions loaded
+
         if loaded_count == 0:
             logger.error("No emotion images loaded; display disabled.")
 
@@ -177,7 +177,7 @@ class DisplayRenderer:
         """
         surface = pygame.image.load(image_path).convert_alpha()
 
-        # Scale to screen size if dimensions don't match
+
         if surface.get_size() != self.screen_size:
             surface = pygame.transform.smoothscale(surface, self.screen_size)
 
@@ -200,7 +200,7 @@ class DisplayRenderer:
             logger.warning(
                 "Emotion '%s' not found, using 'happy' fallback", emotion
             )
-            emotion = 'happy'  # Fallback to happy
+            emotion = 'happy'
 
             if emotion not in self.emotion_images:
                 logger.error("Fallback emotion 'happy' also missing!")
@@ -274,18 +274,18 @@ class DisplayRenderer:
             logger.error("Cannot blend None surfaces")
             return img1 if img1 is not None else img2
 
-        # Clamp alpha to valid range
+
         alpha = max(0.0, min(1.0, alpha))
 
-        # Create result surface with alpha channel
+
         result = pygame.Surface(self.screen_size, pygame.SRCALPHA)
 
-        # Draw current frame with (1-alpha) opacity
+
         img1_copy = img1.copy()
         img1_copy.set_alpha(int(255 * (1 - alpha)))
         result.blit(img1_copy, (0, 0))
 
-        # Draw next frame with alpha opacity
+
         img2_copy = img2.copy()
         img2_copy.set_alpha(int(255 * alpha))
         result.blit(img2_copy, (0, 0))

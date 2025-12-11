@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 from typing import Optional, Dict
 
-# Add parent directory to path
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from audio.audio_output import TextToSpeech as BaseTTS
@@ -33,28 +33,28 @@ class TTSEngine:
         self.tts_config = config['speech']['tts']
         self.provider = self.tts_config['provider']
 
-        # Initialize base TTS engine
+
         self.tts = BaseTTS(config)
 
-        # Base voice settings (provider-specific)
+
         if self.provider == 'piper':
-            # Piper uses length_scale (1.0 = normal) instead of rate (WPM)
+
             self.base_rate = self.tts_config['piper'].get('length_scale', 1.0)
-            self.base_volume = 0.9  # Default volume for pygame playback
-            self.base_pitch = 1.0  # Piper doesn't support pitch control
+            self.base_volume = 0.9
+            self.base_pitch = 1.0
         elif self.provider == 'pyttsx3':
-            # pyttsx3 uses words per minute for rate
+
             self.base_rate = self.tts_config['pyttsx3']['rate']
             self.base_volume = self.tts_config['pyttsx3']['volume']
             self.base_pitch = self.tts_config['pyttsx3'].get('pitch', 1.0)
         else:
-            # Fallback defaults
+
             self.base_rate = 150
             self.base_volume = 0.9
             self.base_pitch = 1.0
             logger.warning(f"Unknown TTS provider: {self.provider}, using default settings")
 
-        # Emotion-to-voice mappings
+
         self.emotion_modulations = {
             'happy': {'rate_mult': 1.1, 'pitch_mult': 1.2, 'volume_mult': 1.0},
             'excited': {'rate_mult': 1.3, 'pitch_mult': 1.4, 'volume_mult': 1.1},
@@ -70,11 +70,11 @@ class TTSEngine:
             'surprised': {'rate_mult': 1.25, 'pitch_mult': 1.35, 'volume_mult': 1.05},
         }
 
-        # Speaking state
+
         self.current_emotion = None
         self.is_speaking = False
 
-        # Performance stats
+
         self.total_utterances = 0
         self.total_duration = 0.0
 
@@ -99,16 +99,16 @@ class TTSEngine:
             return
 
         try:
-            # Apply emotion modulation if specified
+
             if emotion and emotion in self.emotion_modulations:
                 self._set_emotion_voice(emotion)
             else:
                 self._reset_voice()
 
-            # Speak
+
             self.tts.speak(text, wait=wait)
 
-            # Update stats
+
             self.total_utterances += 1
             logger.info(f"Speaking ({emotion or 'neutral'}): {text[:50]}...")
 
@@ -156,21 +156,21 @@ class TTSEngine:
                 if not text or not text.strip():
                     continue
 
-                # Apply emotion for this segment
+
                 if emotion and emotion in self.emotion_modulations:
                     self._set_emotion_voice(emotion)
                 else:
                     self._reset_voice()
 
-                # Speak this segment (always wait for it to finish)
+
                 self.tts.speak(text, wait=True)
 
-                # Small pause between segments (50ms) for natural transition
-                # Skip pause after the last segment
+
+
                 if i < len(segments) - 1:
                     time.sleep(0.05)
 
-                # Update stats
+
                 self.total_utterances += 1
 
                 logger.debug(f"Segment {i+1}/{len(segments)}: ({emotion}) {text[:30]}...")
@@ -211,22 +211,22 @@ class TTSEngine:
 
         modulation = self.emotion_modulations[emotion]
 
-        # Calculate modulated parameters
+
         new_rate = int(self.base_rate * modulation['rate_mult'])
         new_volume = self.base_volume * modulation['volume_mult']
-        # Note: pitch modulation depends on TTS engine capabilities
 
-        # Apply to engine (use factory methods for provider compatibility)
+
+
         try:
-            # For Piper: rate becomes length_scale (inverse: slower = higher value)
-            # For pyttsx3: rate is words per minute
+
+
             if hasattr(self.tts, 'provider_name') and self.tts.provider_name == 'piper':
-                # Piper uses length_scale: 1.0 = normal, 1.2 = slower, 0.8 = faster
-                # Invert rate multiplier for Piper's length_scale
+
+
                 length_scale = 1.0 / modulation['rate_mult']
                 self.tts.set_rate(length_scale)
             else:
-                # pyttsx3 uses words per minute
+
                 self.tts.set_rate(new_rate)
 
             self.tts.set_volume(min(1.0, new_volume))
@@ -240,11 +240,11 @@ class TTSEngine:
     def _reset_voice(self):
         """Reset voice to base parameters"""
         try:
-            # Use factory methods instead of direct engine access
+
             if hasattr(self.tts, 'provider_name') and self.tts.provider_name == 'piper':
-                self.tts.set_rate(1.0)  # Piper: 1.0 = normal length_scale
+                self.tts.set_rate(1.0)
             else:
-                self.tts.set_rate(self.base_rate)  # pyttsx3: words per minute
+                self.tts.set_rate(self.base_rate)
 
             self.tts.set_volume(self.base_volume)
 
@@ -309,19 +309,19 @@ class TTSEngine:
 
 
 if __name__ == "__main__":
-    # Test TTS engine
+
     logging.basicConfig(level=logging.INFO)
 
     import yaml
 
-    # Load config or use mock
+
     config_path = Path(__file__).parent.parent.parent / 'config' / 'settings.yaml'
 
     if config_path.exists():
         with open(config_path) as f:
             config = yaml.safe_load(f)
     else:
-        # Mock config
+
         config = {
             'speech': {
                 'tts': {
@@ -340,19 +340,19 @@ if __name__ == "__main__":
     print("TTS Engine Test")
     print("=" * 60)
 
-    # Initialize engine
+
     tts = TTSEngine(config)
 
-    # Show available voices
+
     print("\nAvailable voices:")
     for voice in tts.get_available_voices():
         print(f"  [{voice['index']}] {voice['name']}")
 
-    # Test basic speech
+
     print("\n1. Testing neutral voice...")
     tts.speak("Hello! I am your companion bot.", wait=True)
 
-    # Test emotions
+
     print("\n2. Testing emotion voices...")
 
     emotions_to_test = ['happy', 'excited', 'sad', 'sleepy', 'playful']
@@ -363,7 +363,7 @@ if __name__ == "__main__":
         import time
         time.sleep(0.3)
 
-    # Test interruption
+
     print("\n3. Testing stop...")
     tts.speak_async("This is a very long sentence that will be interrupted before it finishes speaking.")
     import time
@@ -371,13 +371,13 @@ if __name__ == "__main__":
     tts.stop_speaking()
     print("   Speech stopped!")
 
-    # Show stats
+
     stats = tts.get_statistics()
     print("\nStatistics:")
     print(f"  Total utterances: {stats['total_utterances']}")
     print(f"  Provider: {stats['provider']}")
 
-    # Cleanup
+
     tts.cleanup()
 
     print("\n✅ Test complete!")

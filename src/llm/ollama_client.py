@@ -28,27 +28,27 @@ class OllamaClient:
         self.ollama_config = self.llm_config['ollama']
         self.gen_config = self.llm_config['generation']
 
-        # Connection settings
+
         self.base_url = self.ollama_config['base_url']
         self.model = self.ollama_config['model']
         self.timeout = self.ollama_config['timeout']
 
-        # Generation settings
+
         self.temperature = self.gen_config['temperature']
         self.max_tokens = self.gen_config['max_tokens']
         self.top_p = self.gen_config['top_p']
 
-        # Personality
+
         self.personality_template = self.llm_config['personality_prompt']
         self.fallback_responses = self.llm_config['fallback_responses']
 
-        # Performance tracking
+
         self.total_requests = 0
         self.total_tokens = 0
         self.total_time = 0.0
         self.last_response_time = 0.0
 
-        # Check if Ollama is available
+
         self.is_available = self._check_availability()
 
         if self.is_available:
@@ -108,10 +108,10 @@ class OllamaClient:
         start_time = time.time()
 
         try:
-            # Build user prompt with context (NOT system prompt)
+
             full_prompt = self._build_prompt(prompt, context)
 
-            # Make API request with system as separate parameter
+
             payload = {
                 'model': self.model,
                 'prompt': full_prompt,
@@ -123,7 +123,7 @@ class OllamaClient:
                 }
             }
 
-            # Add system prompt as dedicated parameter (better instruction following)
+
             if system_prompt:
                 payload['system'] = system_prompt
 
@@ -136,11 +136,11 @@ class OllamaClient:
             response.raise_for_status()
             result = response.json()
 
-            # Extract response
+
             generated_text = result.get('response', '').strip()
             tokens = result.get('eval_count', 0)
 
-            # Update stats
+
             duration = time.time() - start_time
             self.total_requests += 1
             self.total_tokens += tokens
@@ -182,7 +182,7 @@ class OllamaClient:
         Returns:
             Dictionary with response (format: "[emotion] message") and metadata
         """
-        # Build personality prompt with user name
+
         system_prompt = self.personality_template.format(
             user_name=user_name
         )
@@ -207,16 +207,16 @@ class OllamaClient:
             Response tokens as they are generated
         """
         if not self.is_available:
-            # Return fallback as single chunk
+
             fallback = self._get_fallback_response(prompt)
             yield fallback['response']
             return
 
         try:
-            # Build user prompt with context (NOT system prompt)
+
             full_prompt = self._build_prompt(prompt, context)
 
-            # Make streaming API request
+
             payload = {
                 'model': self.model,
                 'prompt': full_prompt,
@@ -228,7 +228,7 @@ class OllamaClient:
                 }
             }
 
-            # Add system prompt as dedicated parameter
+
             if system_prompt:
                 payload['system'] = system_prompt
 
@@ -241,7 +241,7 @@ class OllamaClient:
 
             response.raise_for_status()
 
-            # Stream response
+
             for line in response.iter_lines():
                 if line:
                     chunk = json.loads(line)
@@ -271,12 +271,12 @@ class OllamaClient:
         """
         parts = []
 
-        # Add context (conversation history)
+
         if context:
             parts.extend(context)
-            parts.append("")  # Blank line
+            parts.append("")
 
-        # Add current user prompt with "User: " prefix
+
         parts.append(f"User: {user_prompt}")
 
         return "\n".join(parts)
@@ -370,10 +370,10 @@ class OllamaClient:
 
 
 if __name__ == "__main__":
-    # Test Ollama client
+
     logging.basicConfig(level=logging.INFO)
 
-    # Mock config
+
     config = {
         'llm': {
             'provider': 'ollama',
@@ -423,18 +423,18 @@ REMEMBER: Always start with [emotion] in brackets, then your message.''',
     if client.is_available:
         print("\n✅ Ollama is available!")
 
-        # Get model info
+
         info = client.get_model_info()
         if info:
             print(f"\nModel: {info.get('model', 'Unknown')}")
 
-        # Test generation
+
         print("\nTesting generation...")
         result = client.generate("Say hello in one short sentence!")
         print(f"\nResponse: {result['response']}")
         print(f"Tokens: {result['tokens']}, Time: {result['duration']:.2f}s")
 
-        # Test with personality
+
         print("\nTesting with personality...")
         result = client.generate_with_personality(
             "How are you?",
@@ -443,7 +443,7 @@ REMEMBER: Always start with [emotion] in brackets, then your message.''',
         print(f"\nResponse: {result['response']}")
         print("(Note: Response should include [emotion] tag)")
 
-        # Show stats
+
         stats = client.get_statistics()
         print("\nStatistics:")
         print(f"  Total requests: {stats['total_requests']}")
@@ -454,7 +454,7 @@ REMEMBER: Always start with [emotion] in brackets, then your message.''',
         print("Start Ollama with: ollama serve")
         print(f"Pull model with: ollama pull {config['llm']['ollama']['model']}")
 
-        # Test fallback
+
         print("\nTesting fallback responses...")
         result = client.generate("Hello!")
         print(f"Fallback: {result['response']}")

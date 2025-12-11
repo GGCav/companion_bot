@@ -12,7 +12,7 @@ from typing import Optional, Callable, Dict
 import sys
 from pathlib import Path
 
-# Add parent directory to path for imports
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from audio.audio_input import AudioInput
@@ -38,7 +38,7 @@ class VoicePipeline:
         self.config = config
         self.audio_config = config['audio']
 
-        # Initialize components
+
         logger.info("Initializing voice pipeline components...")
 
         self.audio_input = AudioInput(config)
@@ -46,25 +46,25 @@ class VoicePipeline:
         self.stt_engine = STTEngine(config)
         self.realtime_stt = RealtimeSTT(config, self.stt_engine)
 
-        # State management
+
         self.is_running = False
         self.is_listening = False
         self.pipeline_thread: Optional[threading.Thread] = None
 
-        # Transcription queue
+
         self.transcription_queue = queue.Queue()
 
-        # Callbacks
+
         self.on_transcription: Optional[Callable[[Dict], None]] = None
         self.on_speech_start: Optional[Callable[[], None]] = None
         self.on_speech_end: Optional[Callable[[], None]] = None
 
-        # Statistics
+
         self.total_utterances = 0
         self.total_transcription_time = 0.0
         self.last_transcription_time = 0.0
 
-        # Mute window to ignore self-audio (e.g., TTS playback)
+
         self.muted_until = 0.0
 
         logger.info("Voice pipeline initialized")
@@ -77,10 +77,10 @@ class VoicePipeline:
 
         logger.info("Starting voice pipeline...")
 
-        # Start audio input
+
         self.audio_input.start_listening()
 
-        # Start pipeline thread
+
         self.is_running = True
         self.pipeline_thread = threading.Thread(target=self._pipeline_loop, daemon=True)
         self.pipeline_thread.start()
@@ -136,11 +136,11 @@ class VoicePipeline:
         audio_buffer = []
         speech_detected = False
         silence_frames = 0
-        max_silence_frames = 20  # ~2 seconds at 10 Hz
+        max_silence_frames = 20
 
         while self.is_running:
             try:
-                # Skip processing during mute window (e.g., while TTS plays)
+
                 if time.time() < self.muted_until:
                     audio_buffer = []
                     silence_frames = 0
@@ -148,21 +148,21 @@ class VoicePipeline:
                     time.sleep(0.05)
                     continue
 
-                # Get audio chunk from level_queue (always has latest audio)
+
                 audio_chunk = None
                 if not self.audio_input.level_queue.empty():
                     audio_chunk = self.audio_input.level_queue.get(timeout=0.1)
-                
+
                 if audio_chunk is None:
-                    time.sleep(0.01)  # Small delay if no data
+                    time.sleep(0.01)
                     continue
 
-                # Detect voice activity
+
                 has_voice = self.vad.detect(audio_chunk)
 
                 if has_voice:
                     if not speech_detected:
-                        # Speech started - begin recording
+
                         speech_detected = True
                         audio_buffer = []
                         silence_frames = 0
@@ -171,27 +171,27 @@ class VoicePipeline:
                         if self.on_speech_start:
                             self.on_speech_start()
 
-                    # Add to buffer
+
                     audio_buffer.append(audio_chunk)
-                    silence_frames = 0  # Reset silence counter on voice
+                    silence_frames = 0
 
                 elif speech_detected:
-                    # In speech but current frame has no voice
+
                     audio_buffer.append(audio_chunk)
                     silence_frames += 1
 
-                    # Check if speech has ended
+
                     if silence_frames >= max_silence_frames:
-                        # Speech ended
+
                         logger.info("🔇 Speech ended - transcribing...")
 
                         if self.on_speech_end:
                             self.on_speech_end()
 
-                        # Process the recorded audio
+
                         self._process_audio_buffer(audio_buffer)
 
-                        # Reset state
+
                         speech_detected = False
                         audio_buffer = []
                         silence_frames = 0
@@ -216,11 +216,11 @@ class VoicePipeline:
             return
 
         try:
-            # Combine audio chunks
+
             audio_data = b''.join(audio_buffer)
 
-            # Check minimum length (at least 0.5 seconds)
-            min_length = int(0.5 * self.audio_config['input']['sample_rate'] * 2)  # 2 bytes per sample
+
+            min_length = int(0.5 * self.audio_config['input']['sample_rate'] * 2)
             if len(audio_data) < min_length:
                 logger.debug("Audio too short, skipping transcription")
                 return
@@ -228,14 +228,14 @@ class VoicePipeline:
             logger.info(f"Transcribing {len(audio_data)} bytes of audio...")
             start_time = time.time()
 
-            # Transcribe with Whisper
+
             result = self.realtime_stt.transcribe(audio_data)
 
             transcription_time = time.time() - start_time
             self.total_transcription_time += transcription_time
             self.last_transcription_time = transcription_time
 
-            # Check if transcription was successful
+
             text = result.get('text', '').strip()
 
             if text:
@@ -245,10 +245,10 @@ class VoicePipeline:
                            f"(confidence: {result.get('confidence', 0):.2f}, "
                            f"time: {transcription_time:.2f}s)")
 
-                # Add to queue
+
                 self.transcription_queue.put(result)
 
-                # Call callback
+
                 if self.on_transcription:
                     self.on_transcription(result)
 
@@ -353,34 +353,34 @@ class VoicePipeline:
                 logger.info(f"  [{device['index']}] {device['name']} "
                            f"({device['channels']} ch, {device['sample_rate']} Hz)")
 
-            # Try to start listening
+
             self.audio_input.start_listening()
-            
-            # Check audio levels multiple times over 3 seconds
+
+
             logger.info("Monitoring audio levels (speak into mic or make noise)...")
             max_level = 0.0
             samples = []
-            
-            for i in range(30):  # Sample 30 times over 3 seconds
+
+            for i in range(30):
                 time.sleep(0.1)
                 level = self.audio_input.get_audio_level()
                 samples.append(level)
                 max_level = max(max_level, level)
-                
-                # Show visual feedback
-                if i % 3 == 0:  # Update every 0.3 seconds
+
+
+                if i % 3 == 0:
                     bar = '█' * int(level * 50)
                     logger.info(f"  Level: [{bar:<50}] {level:.3f}")
-            
+
             self.audio_input.stop_listening()
-            
-            # Show statistics
+
+
             avg_level = sum(samples) / len(samples) if samples else 0
             logger.info(f"Audio test complete:")
             logger.info(f"  Max level:     {max_level:.3f}")
             logger.info(f"  Average level: {avg_level:.3f}")
             logger.info(f"  Callbacks:     {self.audio_input._callback_count}")
-            
+
             if self.audio_input._callback_count == 0:
                 logger.warning("⚠️  No audio callbacks received - stream may not be working")
             elif max_level < 0.001:
@@ -410,7 +410,7 @@ class VoicePipeline:
 
 
 if __name__ == "__main__":
-    # Test voice pipeline
+
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -423,7 +423,7 @@ if __name__ == "__main__":
     print("Mini Microphone → VAD → Whisper STT")
     print("=" * 60)
 
-    # Load config
+
     config_path = Path(__file__).parent.parent.parent / 'config' / 'settings.yaml'
 
     if not config_path.exists():
@@ -463,13 +463,13 @@ if __name__ == "__main__":
     print("\nInitializing voice pipeline...")
     pipeline = VoicePipeline(config)
 
-    # Test microphone
+
     print("\nTesting microphone...")
     if not pipeline.test_microphone():
         print("❌ Microphone test failed! Check connections.")
         sys.exit(1)
 
-    # Set up callbacks
+
     def on_transcription(result):
         print(f"\n💬 YOU SAID: '{result['text']}'")
         print(f"   Confidence: {result['confidence']:.2f}")
@@ -485,14 +485,14 @@ if __name__ == "__main__":
     pipeline.set_transcription_callback(on_transcription)
     pipeline.set_speech_callbacks(on_speech_start, on_speech_end)
 
-    # Start pipeline
+
     print("\n✅ Starting voice pipeline...")
     print("Speak into your mini microphone. Press Ctrl+C to stop.\n")
 
     try:
         pipeline.start()
 
-        # Keep running
+
         while True:
             time.sleep(0.1)
 
@@ -502,7 +502,7 @@ if __name__ == "__main__":
     finally:
         pipeline.cleanup()
 
-        # Show statistics
+
         stats = pipeline.get_statistics()
         print("\n" + "=" * 60)
         print("Session Statistics")

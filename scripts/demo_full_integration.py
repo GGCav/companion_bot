@@ -14,7 +14,7 @@ from datetime import datetime
 from pathlib import Path
 from collections import defaultdict
 
-# Add src to path
+
 sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
 
 try:
@@ -22,7 +22,7 @@ try:
     COLORAMA_AVAILABLE = True
 except ImportError:
     COLORAMA_AVAILABLE = False
-    # Fallback: no colors
+
     class Fore:
         CYAN = GREEN = YELLOW = RED = ''
     class Style:
@@ -37,7 +37,7 @@ except ImportError:
 
 import yaml
 
-# Component imports
+
 from llm.ollama_client import OllamaClient
 from llm.conversation_manager import ConversationManager
 from llm.tts_engine import TTSEngine
@@ -45,7 +45,7 @@ from llm.stt_engine import STTEngine
 from expression import EmotionDisplay
 from memory import initialize_memory
 
-# Configure logging
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -124,7 +124,7 @@ class LatencyMonitor:
         print(f"{Fore.CYAN}📊 LATENCY STATISTICS{Style.RESET_ALL}")
         print(f"{Fore.CYAN}{'='*70}{Style.RESET_ALL}\n")
 
-        # End-to-end
+
         if 'end_to_end_latency' in stats:
             e2e = stats['end_to_end_latency']
             print(f"{Fore.GREEN}End-to-End Latency:{Style.RESET_ALL}")
@@ -132,7 +132,7 @@ class LatencyMonitor:
             print(f"  Min: {e2e['min']:.3f}s | Max: {e2e['max']:.3f}s | "
                   f"P95: {e2e['p95']:.3f}s | Count: {e2e['count']}\n")
 
-        # Perceived latency
+
         if 'perceived_latency' in stats:
             perc = stats['perceived_latency']
             print(f"{Fore.GREEN}Perceived Latency (to first audio):{Style.RESET_ALL}")
@@ -140,7 +140,7 @@ class LatencyMonitor:
             print(f"  Min: {perc['min']:.3f}s | Max: {perc['max']:.3f}s | "
                   f"P95: {perc['p95']:.3f}s\n")
 
-        # STT metrics (if voice mode used)
+
         if 'stt_total' in stats:
             stt = stats['stt_total']
             print(f"{Fore.GREEN}STT Latency:{Style.RESET_ALL}")
@@ -154,7 +154,7 @@ class LatencyMonitor:
             print(f"  Average: {conf['avg']:.2f}")
             print(f"  Min: {conf['min']:.2f} | Max: {conf['max']:.2f}\n")
 
-        # Component breakdown
+
         print(f"{Fore.YELLOW}Component Breakdown:{Style.RESET_ALL}")
 
         component_order = [
@@ -173,7 +173,7 @@ class LatencyMonitor:
                 print(f"  {component:30s}: {c['avg']:6.3f}s "
                       f"(min: {c['min']:.3f}s, max: {c['max']:.3f}s)")
 
-        # TTS segments
+
         tts_segments = [k for k in stats.keys() if k.startswith('tts_segment_')]
         if tts_segments:
             print(f"\n{Fore.YELLOW}TTS Segments:{Style.RESET_ALL}")
@@ -230,7 +230,7 @@ class ResourceMonitor:
                 rss_mb = proc.memory_full_info().rss / (1024 ** 2)
                 self.samples[name].append({'label': label, 'mb': rss_mb})
             except (psutil.NoSuchProcess, psutil.AccessDenied):
-                # Drop dead or inaccessible processes
+
                 self.processes.pop(name, None)
 
     def get_statistics(self) -> dict:
@@ -323,7 +323,7 @@ class IntegrationTest:
         self.session_id = None
         self.user_id = None
 
-        # Component references
+
         self.user_memory = None
         self.conversation_history = None
         self.ollama_client = None
@@ -333,14 +333,14 @@ class IntegrationTest:
         self.emotion_display = None
         self.voice_pipeline = None
         self.stt_mute_until = 0.0
-        # Base mute window to avoid STT hearing petting TTS
+
         self.gesture_tts_mute_secs = 6.0
         self.petting_lock = False
-        # Default to voice mode for unattended autorun
-        self.input_mode = 'voice'  # 'text' or 'voice'
+
+        self.input_mode = 'voice'
         self.shutdown_requested = False
 
-        # Initialize all components
+
         print(f"{Fore.CYAN}Initializing components...{Style.RESET_ALL}")
         self._init_memory()
         self._init_llm()
@@ -357,7 +357,7 @@ class IntegrationTest:
 
             self.user_memory, self.conversation_history = initialize_memory(self.config)
 
-            # Create or get test user
+
             test_user = self.user_memory.get_user_by_name("TestUser")
             if not test_user:
                 self.user_id = self.user_memory.create_user("TestUser")
@@ -366,7 +366,7 @@ class IntegrationTest:
                 self.user_id = test_user['user_id']
                 logger.info(f"Using existing test user with ID: {self.user_id}")
 
-            # Generate session ID
+
             self.session_id = self.conversation_history.generate_session_id()
 
             self.latency_monitor.end_timer('init_memory')
@@ -383,7 +383,7 @@ class IntegrationTest:
             self.latency_monitor.start_timer('init_llm')
 
             self.ollama_client = OllamaClient(self.config)
-            # Track external Ollama daemon RAM if available
+
             self.resource_monitor.attach_process_by_name('ollama', label='ollama')
 
             self.conversation_manager = ConversationManager(
@@ -426,9 +426,9 @@ class IntegrationTest:
             self.latency_monitor.start_timer('init_expression')
 
             self.emotion_display = EmotionDisplay(self.config)
-            # Wire gesture effects into TTS/sound pipeline
+
             self.emotion_display.set_effect_callback(self._on_gesture_effect)
-            # Exit GPIO should shut down whole app
+
             self.emotion_display.set_exit_callback(self._on_exit_button)
             self.emotion_display.start()
 
@@ -438,7 +438,7 @@ class IntegrationTest:
         except Exception as e:
             print(f"  ⚠️  Expression Display: {e} (non-critical)")
             logger.warning(f"Expression display initialization failed: {e}")
-            self.emotion_display = None  # Continue without display
+            self.emotion_display = None
 
     def _init_voice_pipeline(self):
         """Initialize voice pipeline for STT"""
@@ -449,7 +449,7 @@ class IntegrationTest:
 
             self.voice_pipeline = VoicePipeline(self.config)
 
-            # Register speech detection callbacks
+
             self.voice_pipeline.set_speech_callbacks(
                 on_start=self._on_speech_start,
                 on_end=self._on_speech_end
@@ -473,54 +473,54 @@ class IntegrationTest:
         if not effect:
             return
 
-        # Emotion is already handled in EmotionDisplay; only handle side effects here.
+
         speak_text = effect.get('speak')
         sound_path = effect.get('sound')
         emotion = effect.get('emotion')
 
         if speak_text and self.tts_engine:
-            # Hard lock to prevent stacking
+
             if self.petting_lock:
                 return
             self.petting_lock = True
             try:
-                # Mark petting active so gestures are ignored
+
                 if self.emotion_display:
                     self.emotion_display.command_queue.put({
                         'type': 'SET_PETTING',
                         'active': True
                     })
 
-                # Pause voice pipeline during petting TTS to avoid self-capture
+
                 if self.voice_pipeline:
                     self.voice_pipeline.pause_listening()
-                # Visually and logically exit listening while muted
+
                 if self.emotion_display:
                     self.emotion_display.set_listening(False)
                 self.stt_mute_until = time.time() + 0.1
 
-                # Play petting line synchronously
+
                 self.tts_engine.speak(speak_text, emotion=emotion, wait=True)
 
-                # Tail before resuming to avoid late capture
+
                 tail = 2.0
                 self.stt_mute_until = time.time() + tail
                 if self.voice_pipeline:
                     self.voice_pipeline.resume_listening()
 
-                # Clear petting active after tail
+
                 if self.emotion_display:
                     self.emotion_display.command_queue.put({
                         'type': 'SET_PETTING',
                         'active': False
                     })
-            except Exception as exc:  # pragma: no cover
+            except Exception as exc:
                 logger.error(f"Gesture TTS failed: {exc}")
             finally:
                 self.petting_lock = False
 
         if sound_path:
-            # If audio output queue/player exists, route here. Not present in this test harness.
+
             logger.info("Gesture sound requested: %s (not wired to player in this script)", sound_path)
     def _on_speech_start(self):
         """Callback when speech detection starts recording"""
@@ -530,7 +530,7 @@ class IntegrationTest:
 
     def _on_speech_end(self):
         """Callback when speech ends (silence detected)"""
-        # Note: Don't deactivate listening yet - transcription still in progress
+
         logger.debug("Speech ended - processing transcription")
 
     def _on_transcription_complete(self, result: dict):
@@ -550,7 +550,7 @@ class IntegrationTest:
             self.input_mode = 'text'
             return
 
-        # Auto-select voice to avoid interactive prompt
+
         self.input_mode = 'voice'
         print(f"{Fore.GREEN}Voice mode enabled (auto){Style.RESET_ALL}")
 
@@ -563,25 +563,25 @@ class IntegrationTest:
         """
         print(f"{Fore.CYAN}🎤 Listening... (speak now){Style.RESET_ALL}")
 
-        # Start STT timing
+
         self.latency_monitor.start_timer('stt_total')
 
-        # Start voice pipeline listening
-        # (listening state will be activated by callback when speech detected)
+
+
         self.voice_pipeline.start()
 
         try:
-            # Wait for transcription with timeout
+
             result = self.voice_pipeline.wait_for_transcription(timeout=30.0)
 
             if result and result.get('text'):
                 transcription = result['text'].strip()
                 confidence = result.get('confidence', 0.0)
 
-                # End STT timing
+
                 stt_time = self.latency_monitor.end_timer('stt_total')
 
-                # Record STT confidence
+
                 self.latency_monitor.record_metric('stt_confidence',
                                                    confidence)
 
@@ -594,7 +594,7 @@ class IntegrationTest:
                 return transcription
             else:
                 print(f"{Fore.YELLOW}No speech detected{Style.RESET_ALL}")
-                # Cancel timer if no speech
+
                 if 'stt_total' in self.latency_monitor.current_timers:
                     del self.latency_monitor.current_timers['stt_total']
                 return None
@@ -602,14 +602,14 @@ class IntegrationTest:
         except Exception as e:
             logger.error(f"Voice input error: {e}", exc_info=True)
             print(f"{Fore.RED}Voice input failed: {e}{Style.RESET_ALL}")
-            # Cancel timer on error
+
             if 'stt_total' in self.latency_monitor.current_timers:
                 del self.latency_monitor.current_timers['stt_total']
             return None
 
         finally:
-            # Stop voice pipeline
-            # (listening state will be deactivated by callback when transcription completes)
+
+
             self.voice_pipeline.stop()
 
     def _process_conversation_turn(self, user_text: str):
@@ -621,14 +621,14 @@ class IntegrationTest:
         """
         turn_start = time.time()
 
-        # 1. Memory - Load context
+
         self.latency_monitor.start_timer('memory_context_retrieval')
         context = self.conversation_history.get_recent_context(
             self.user_id, limit=10
         )
         self.latency_monitor.end_timer('memory_context_retrieval')
 
-        # 2. LLM - Generate response with streaming
+
         self.latency_monitor.start_timer('llm_total')
         self.latency_monitor.start_timer('llm_time_to_first_token')
 
@@ -650,7 +650,7 @@ class IntegrationTest:
                 segments.append((emotion, text))
                 print(f"[{emotion}] {text} ", end='', flush=True)
 
-                # Speak each segment as it arrives
+
                 if not tts_started:
                     tts_started = True
                     tts_start = time.time()
@@ -676,32 +676,32 @@ class IntegrationTest:
 
         except Exception as e:
             logger.error(f"LLM generation error: {e}", exc_info=True)
-            # Fallback response
+
             segments = [('happy', "I'm having trouble thinking right now!")]
             print(f"[happy] I'm having trouble thinking right now! ", end='', flush=True)
 
-        print()  # New line after bot response
+        print()
 
         llm_duration = self.latency_monitor.end_timer('llm_total')
         self.resource_monitor.capture_snapshot('llm')
 
-        # Calculate tokens per second if available
+
         if llm_duration > 0 and segments:
             response_text = ' '.join([text for _, text in segments])
-            # Rough token estimate (4 chars per token)
+
             estimated_tokens = len(response_text) / 4
             tokens_per_second = estimated_tokens / llm_duration
             self.latency_monitor.record_metric('tokens_per_second', tokens_per_second)
 
-        # 3. Memory - Save conversation
+
         self.latency_monitor.start_timer('memory_save_message')
 
-        # Save user message
+
         self.conversation_history.save_message(
             self.user_id, self.session_id, 'user', user_text
         )
 
-        # Save assistant response
+
         if segments:
             response_text = ' '.join([text for _, text in segments])
             final_emotion = segments[-1][0] if segments else 'happy'
@@ -712,25 +712,25 @@ class IntegrationTest:
 
         self.latency_monitor.end_timer('memory_save_message')
 
-        # End TTS total if it started
+
         if first_token_recorded and tts_started:
             self.latency_monitor.end_timer('tts_total')
             self.resource_monitor.capture_snapshot('tts')
         elif not tts_started:
-            # No segments spoken; ensure timer not left running
+
             self.latency_monitor.current_timers.pop('tts_total', None)
 
-        # 6. End-to-end timing
+
         turn_end = time.time()
         end_to_end = turn_end - turn_start
         self.latency_monitor.record_metric('end_to_end_latency', end_to_end)
 
-        # Perceived latency (time to first audio playback)
+
         if first_token_recorded and tts_started:
             perceived = tts_start - turn_start
             self.latency_monitor.record_metric('perceived_latency', perceived)
 
-        # Capture post-turn RAM state (main + attached procs)
+
         self.resource_monitor.capture_snapshot('turn_end')
 
     def run_interactive_demo(self):
@@ -741,10 +741,10 @@ class IntegrationTest:
         print(f"\n{Fore.GREEN}Test Mode: Interactive Demo{Style.RESET_ALL}")
         print(f"{Fore.GREEN}Session ID: {self.session_id}{Style.RESET_ALL}")
 
-        # Choose input mode
+
         self._choose_input_mode()
 
-        # Display instructions based on mode
+
         print(f"\n{Fore.YELLOW}Commands:{Style.RESET_ALL}")
         if self.input_mode == 'voice':
             print("  - Speak into microphone to chat")
@@ -762,25 +762,25 @@ class IntegrationTest:
             if self.shutdown_requested:
                 break
             try:
-                # Get user input based on mode
+
                 if self.input_mode == 'voice':
                     user_input = self._get_user_input_voice()
 
-                    # Handle empty or None
+
                     if not user_input:
                         if self.shutdown_requested:
                             break
                         continue
 
                 else:
-                    # Text mode
+
                     user_input = input(f"{Fore.GREEN}You: "
                                       f"{Style.RESET_ALL}").strip()
 
                     if not user_input:
                         continue
 
-                # Handle commands (works for both voice and text)
+
                 if user_input.lower() in ['quit', 'exit', 'statistics',
                                           'stats']:
                     if user_input.lower() in ['quit', 'exit']:
@@ -789,13 +789,13 @@ class IntegrationTest:
                         self.latency_monitor.print_summary()
                         continue
 
-                # Process conversation turn
+
                 print(f"{Fore.YELLOW}[Processing...]{Style.RESET_ALL}")
                 self._process_conversation_turn(user_input)
 
                 conversation_count += 1
 
-                # Print latency for this turn
+
                 if self.latency_monitor.metrics.get('end_to_end_latency'):
                     latest = self.latency_monitor.metrics['end_to_end_latency'][-1]
                     print(f"{Fore.CYAN}[End-to-End: {latest:.2f}s]{Style.RESET_ALL}\n")
@@ -809,14 +809,14 @@ class IntegrationTest:
                 logger.error(f"Error in conversation turn: {e}", exc_info=True)
                 continue
 
-        # Save final report
+
         self._save_final_report(conversation_count)
 
     def _on_exit_button(self):
         """Handle GPIO exit button: request full shutdown."""
         logger.info("Exit button pressed - requesting shutdown")
         self.shutdown_requested = True
-        # Stop voice pipeline immediately to unblock waits
+
         if self.voice_pipeline:
             try:
                 self.voice_pipeline.stop()
@@ -853,7 +853,7 @@ class IntegrationTest:
             }
         }
 
-        # Save to JSON
+
         report_path = Path('data/logs/integration_test_report.json')
         report_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -864,7 +864,7 @@ class IntegrationTest:
         print(f"{Fore.GREEN}Report saved to: {report_path}{Style.RESET_ALL}")
         print(f"{Fore.GREEN}{'='*70}{Style.RESET_ALL}")
 
-        # Print summary
+
         self.latency_monitor.print_summary()
         self.resource_monitor.print_summary()
 
@@ -895,11 +895,11 @@ class IntegrationTest:
 
 def main():
     """Main entry point"""
-    # Initialize colorama if available
+
     if COLORAMA_AVAILABLE:
         init(autoreset=True)
 
-    # Load configuration
+
     config_path = Path(__file__).parent.parent / 'config' / 'settings.yaml'
 
     if not config_path.exists():
@@ -913,7 +913,7 @@ def main():
         print(f"Error loading config: {e}")
         return 1
 
-    # Create and run test
+
     test = None
     try:
         test = IntegrationTest(config)

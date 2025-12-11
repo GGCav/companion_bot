@@ -9,14 +9,14 @@ import logging
 import time
 from pathlib import Path
 
-# Add src to path
+
 sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
 
 import yaml
 from llm.voice_pipeline import VoicePipeline
 from llm import ConversationManager
 
-# Configure logging
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s'
@@ -31,7 +31,7 @@ def main():
     print("🎤 VOICE + LLM TEST (Text Output Only)")
     print("="*70)
 
-    # Load configuration
+
     config_path = Path(__file__).parent.parent / 'config' / 'settings.yaml'
 
     if not config_path.exists():
@@ -47,15 +47,15 @@ def main():
         print(f"❌ Failed to load config: {e}")
         return 1
 
-    # Initialize components
+
     print("\n📦 Initializing components...")
 
     try:
-        # Voice input
+
         voice_input = VoicePipeline(config)
         print("   ✅ Voice input initialized")
 
-        # Conversation manager (LLM)
+
         conversation_manager = ConversationManager(config)
         print("   ✅ Conversation manager initialized")
 
@@ -64,14 +64,14 @@ def main():
         logger.error("Initialization error", exc_info=True)
         return 1
 
-    # Check Ollama availability
+
     if not conversation_manager.llm.is_available:
         print("\n⚠️  WARNING: Ollama not available!")
         print("   Starting Ollama: ollama serve")
         print("   Pull model: ollama pull qwen2.5:0.5b")
         print("\n   Continuing with fallback responses...")
 
-    # Start listening
+
     print("\n" + "="*70)
     print("🎤 LISTENING MODE")
     print("="*70)
@@ -82,12 +82,12 @@ def main():
 
     conversation_count = 0
 
-    # Start the voice pipeline
+
     voice_input.start()
 
     try:
         while True:
-            # Wait for voice input (blocks until speech detected or timeout)
+
             print("\n🎤 Listening...")
             result = voice_input.wait_for_transcription(timeout=30.0)
 
@@ -95,7 +95,7 @@ def main():
                 print("   No speech detected, trying again...")
                 continue
 
-            # Extract transcription from result
+
             transcription = result.get('text', '').strip()
             confidence = result.get('confidence', 0.0)
 
@@ -103,15 +103,15 @@ def main():
                 print("   Could not transcribe, trying again...")
                 continue
 
-            # Display what user said
+
             print(f"\n👤 You said: {transcription} (confidence: {confidence:.0%})")
 
-            # Check for exit command
+
             if transcription.lower() in ['quit', 'exit', 'goodbye', 'bye']:
                 print("\n👋 Goodbye!")
                 break
 
-            # Generate LLM response
+
             print("🤖 Thinking...")
             start_time = time.time()
 
@@ -121,10 +121,10 @@ def main():
 
             response_time = time.time() - start_time
 
-            # Display bot response
+
             print(f"\n🤖 Bot ({metadata['emotion']}): {response}")
 
-            # Display metadata every 3 conversations
+
             conversation_count += 1
             if conversation_count % 3 == 0:
                 print("\n   📊 Metadata:")
@@ -147,10 +147,10 @@ def main():
         return 1
 
     finally:
-        # Clean up voice pipeline
+
         voice_input.cleanup()
 
-    # Show summary
+
     print("\n" + "="*70)
     print("SESSION SUMMARY")
     print("="*70)

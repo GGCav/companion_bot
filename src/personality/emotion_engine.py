@@ -35,22 +35,22 @@ class EmotionEngine:
         self.config = config
         self.personality_config = config['personality']
 
-        # Current state
+
         self.current_emotion = EmotionState(self.personality_config['default_state'])
-        self.emotion_intensity = 0.5  # 0-1
+        self.emotion_intensity = 0.5
         self.energy_level = self.personality_config['traits']['energy_level']
 
-        # Emotion scores (multiple emotions can be active)
+
         self.emotion_scores: Dict[EmotionState, float] = {
             emotion: 0.0 for emotion in EmotionState
         }
         self.emotion_scores[self.current_emotion] = 1.0
 
-        # Timers
+
         self.last_interaction_time = time.time()
         self.last_update_time = time.time()
 
-        # Personality traits
+
         self.traits = self.personality_config['traits']
 
         logger.info(f"Emotion engine initialized, default state: {self.current_emotion.value}")
@@ -61,23 +61,23 @@ class EmotionEngine:
         delta_time = current_time - self.last_update_time
         self.last_update_time = current_time
 
-        # Apply emotion decay
+
         decay_rate = self.personality_config['dynamics']['emotion_decay_rate']
         for emotion in EmotionState:
             if emotion != self.current_emotion:
                 self.emotion_scores[emotion] = max(0.0, self.emotion_scores[emotion] - decay_rate * delta_time)
 
-        # Check for loneliness
+
         time_since_interaction = current_time - self.last_interaction_time
-        if time_since_interaction > 30:  # 30 seconds
+        if time_since_interaction > 30:
             loneliness_rate = self.personality_config['dynamics']['loneliness_increase_rate']
             self.add_emotion(EmotionState.LONELY, loneliness_rate * time_since_interaction)
 
-        # Energy drain
+
         energy_drain = self.personality_config['dynamics']['energy_drain_rate']
         self.energy_level = max(0.1, self.energy_level - energy_drain * delta_time)
 
-        # Update primary emotion based on highest score
+
         self._update_primary_emotion()
 
     def add_emotion(self, emotion: EmotionState, amount: float):
@@ -119,23 +119,23 @@ class EmotionEngine:
         """
         self.last_interaction_time = time.time()
 
-        # Convert string to EmotionState enum
+
         try:
             emotion = EmotionState(emotion_str.lower())
         except ValueError:
             logger.warning(f"Invalid emotion '{emotion_str}', defaulting to happy")
             emotion = EmotionState.HAPPY
 
-        # Set this emotion as dominant
-        # Reset other emotions to lower values for cleaner state
+
+
         for e in EmotionState:
             if e == emotion:
                 self.emotion_scores[e] = intensity
             else:
-                # Keep a bit of previous emotions for natural blending
+
                 self.emotion_scores[e] = max(0.0, self.emotion_scores[e] * 0.3)
 
-        # Update primary emotion
+
         self._update_primary_emotion()
 
         logger.info(f"Emotion set from LLM: {emotion.value} (intensity: {intensity:.2f})")
@@ -160,37 +160,37 @@ class EmotionEngine:
 
         self.last_interaction_time = time.time()
 
-        # Reset current emotion scores for clean slate
+
         for e in EmotionState:
             self.emotion_scores[e] = max(0.0, self.emotion_scores[e] * 0.2)
 
-        # Process each emotion with increasing intensity
+
         num_emotions = len(emotion_list)
         for i, emotion_str in enumerate(emotion_list):
-            # Convert to enum
+
             try:
                 emotion = EmotionState(emotion_str.lower())
             except ValueError:
                 logger.warning(f"Invalid emotion '{emotion_str}' in sequence, skipping")
                 continue
 
-            # Calculate intensity: earlier emotions weaker, final emotion strongest
-            # Intensity ranges from 0.3 (first) to 0.8 (last)
+
+
             base_intensity = 0.3
             max_intensity = 0.8
             if num_emotions > 1:
-                position_weight = i / (num_emotions - 1)  # 0.0 to 1.0
+                position_weight = i / (num_emotions - 1)
                 intensity = base_intensity + (max_intensity - base_intensity) * position_weight
             else:
                 intensity = max_intensity
 
-            # Add this emotion (blend with existing)
+
             self.emotion_scores[emotion] = max(
                 self.emotion_scores[emotion],
                 intensity
             )
 
-        # Update primary emotion (will be the strongest, likely the last one)
+
         self._update_primary_emotion()
 
         logger.info(f"Processed emotion sequence: {' → '.join(emotion_list)} (final: {self.current_emotion.value})")

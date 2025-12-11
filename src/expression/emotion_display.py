@@ -5,8 +5,8 @@ Main controller for expression pipeline with threading and state management
 
 try:
     import pygame  # type: ignore  # noqa: E0401
-except ImportError:  # pragma: no cover
-    pygame = None  # type: ignore
+except ImportError:
+    pygame = None
 import threading
 import queue
 import time
@@ -14,7 +14,7 @@ import logging
 import math
 from typing import Optional, Dict, Callable, Tuple
 
-# pylint: disable=import-error
+
 
 try:
     import RPi.GPIO as GPIO
@@ -263,18 +263,18 @@ DEFAULT_EMOTION_PRESETS: Dict[str, Dict] = {
 class DisplayState:
     """Container for display state"""
     def __init__(self):
-        # Priority states
+
         self.is_listening: bool = False
         self.is_speaking: bool = False
 
-        # Emotion state
+
         self.current_emotion: str = "happy"
         self.target_emotion: Optional[str] = None
 
-        # Speaking animation state
+
         self.speaking_frame_toggle: bool = False
         self.last_toggle_time: float = 0.0
-        self.toggle_interval: float = 0.15  # Speaking toggle interval
+        self.toggle_interval: float = 0.15
         self.speaking_level: float = 0.0
         self.speaking_level_target: float = 0.0
         self.speaking_phase: float = 0.0
@@ -323,7 +323,7 @@ class EmotionDisplay:
         self.effect_callback: Optional[Callable[[Dict], None]] = None
         self.exit_callback: Optional[Callable[[], None]] = None
 
-        # Extract configuration
+
         screen_size = tuple(self.display_config.get('resolution', [320, 240]))
         image_dir = self.display_config.get('image_dir', 'src/display')
         self.fps = self.display_config.get('fps', 60)
@@ -331,7 +331,7 @@ class EmotionDisplay:
         self.gpio_enabled = gpio_cfg.get('enabled', True)
         self.gpio_exit_pin = gpio_cfg.get('exit_button_pin', 27)
 
-        # Initialize components
+
         self.renderer = DisplayRenderer(
             screen_size=screen_size,
             framebuffer=framebuffer,
@@ -345,17 +345,17 @@ class EmotionDisplay:
         self.procedural_enabled = self.renderer.use_procedural
         self.emotion_params: Dict[str, Dict] = self._build_emotion_params()
 
-        # Threading components
+
         self.is_running = False
         self.display_thread: Optional[threading.Thread] = None
         self.command_queue = queue.Queue()
         self.state_lock = threading.Lock()
 
-        # Performance tracking
+
         self.clock = pygame.time.Clock()
         self._last_delta_time = 0.0
 
-        # Touch state
+
         self._touch_start_pos: Optional[Tuple[int, int]] = None
         self._touch_down_pos: Optional[Tuple[int, int]] = None
         self._touch_down_time: float = 0.0
@@ -364,7 +364,7 @@ class EmotionDisplay:
         self._last_effect_time: float = 0.0
         self.pending_tap_time: float = 0.0
 
-        # Initialize GPIO if available
+
         self._init_gpio()
 
         logger.info("EmotionDisplay initialized")
@@ -418,33 +418,33 @@ class EmotionDisplay:
         last_time = time.time()
 
         while self.is_running:
-            # Calculate delta time
+
             current_time = time.time()
             delta_time = current_time - last_time
             last_time = current_time
             self._last_delta_time = delta_time
 
-            # Process command queue
+
             self._process_commands()
 
-            # Check GPIO exit button
+
             if self._check_gpio_exit():
                 logger.info("GPIO exit button pressed")
                 if self.exit_callback:
                     try:
                         self.exit_callback()
-                    except Exception as exc:  # pragma: no cover
+                    except Exception as exc:
                         logger.error("Exit callback failed: %s", exc)
                 self.is_running = False
                 break
 
-            # Update state
+
             self._update_state(delta_time)
 
-            # Render frame
+
             self._render_frame()
 
-            # Handle pygame events
+
             if self.touch_enabled and self.state.petting_active:
                 self._discard_touch_events()
 
@@ -454,7 +454,7 @@ class EmotionDisplay:
                 elif self.touch_enabled:
                     self._handle_touch_event(event)
 
-            # Maintain target FPS
+
             self.clock.tick(self.fps)
 
         logger.info("Display loop exited")
@@ -501,7 +501,7 @@ class EmotionDisplay:
                     self.state.speaking_frame_toggle = False
                     self.state.speaking_phase = 0.0
                 else:
-                    # Reset phase on start to avoid mid-wave jump
+
                     self.state.speaking_phase = 0.0
                 logger.debug("Speaking: %s", active)
 
@@ -539,15 +539,15 @@ class EmotionDisplay:
         pending_tap_fire = False
 
         with self.state_lock:
-            # Update transition progress
+
             if self.transition.is_transitioning():
                 _from_em, to_em, _alpha = self.transition.update(delta_time)
-                # Update current emotion when transition completes
+
                 if not self.transition.is_transitioning():
                     self.state.current_emotion = to_em
                     self.state.target_emotion = None
 
-            # Update speaking animation toggle
+
             if self.state.is_speaking or self.state.is_listening:
                 current_time = time.time()
                 if (
@@ -559,7 +559,7 @@ class EmotionDisplay:
                     )
                     self.state.last_toggle_time = current_time
 
-            # Speaking intensity smoothing for procedural renderer
+
             if self.procedural_enabled:
                 smooth = max(
                     1e-3, self.procedural_config.get('speaking_smooth', 8.0)
@@ -567,7 +567,7 @@ class EmotionDisplay:
                 blend = 1.0 - math.exp(-smooth * max(delta_time, 0.0))
                 target_level = 0.0
                 if self.state.is_speaking:
-                    # Sine wave drives continuous mouth flaps while speaking
+
                     self.state.speaking_phase += (
                         2.0
                         * math.pi
@@ -584,7 +584,7 @@ class EmotionDisplay:
                     + blend * target_level
                 )
 
-            # Fire pending single tap if double-tap window elapsed
+
         if self.touch_enabled and self.pending_tap_time > 0.0:
             double_tap_window = float(
                 self.touch_thresholds.get('double_tap_window', 0.35)
@@ -603,7 +603,7 @@ class EmotionDisplay:
         Priority: LISTENING > SPEAKING > EMOTION + TRANSITION
         """
         with self.state_lock:
-            # Priority 1: Listening state
+
             if self.state.is_listening:
                 if self.procedural_enabled:
                     params = self._get_emotion_params(
@@ -623,7 +623,7 @@ class EmotionDisplay:
                     self.renderer.render_frame(frame)
                     return
 
-            # Priority 2: Speaking animation
+
             if self.state.is_speaking:
                 emotion = self.state.current_emotion
                 if self.procedural_enabled:
@@ -644,9 +644,9 @@ class EmotionDisplay:
                     self.renderer.render_frame(frame)
                     return
 
-            # Priority 3: Emotion display with transitions
+
             if self.transition.is_transitioning():
-                # Just get current values (no time advance)
+
                 from_em, to_em, alpha = self.transition.update(0)
                 if self.procedural_enabled:
                     from_params = self._get_emotion_params(from_em)
@@ -674,7 +674,7 @@ class EmotionDisplay:
                     self.renderer.render_frame(blended)
                     return
 
-            # Default: Show current emotion
+
             if self.procedural_enabled:
                 params = self._get_emotion_params(
                     self.state.current_emotion
@@ -706,13 +706,13 @@ class EmotionDisplay:
             return False
 
         try:
-            # Active low (pressed = 0)
+
             return not GPIO.input(self.gpio_exit_pin)
         except (RuntimeError, ValueError, OSError) as e:
             logger.error("GPIO read error: %s", e)
             return False
 
-    # Public API methods (thread-safe)
+
 
     def set_emotion(self, emotion: str, transition_duration: float = 0.5):
         """
@@ -773,13 +773,13 @@ class EmotionDisplay:
         """Clean up display resources and GPIO"""
         logger.info("Cleaning up emotion display...")
 
-        # Stop display loop
+
         self.stop()
 
-        # Clean up renderer
+
         self.renderer.cleanup()
 
-        # Clean up GPIO
+
         if GPIO_AVAILABLE and self.gpio_enabled:
             try:
                 GPIO.cleanup()
@@ -809,12 +809,12 @@ class EmotionDisplay:
     def _get_emotion_params(self, emotion: str) -> Dict:
         if emotion in self.emotion_params:
             return self.emotion_params[emotion]
-        # Fallbacks
+
         if "happy" in self.emotion_params:
             return self.emotion_params["happy"]
         return list(self.emotion_params.values())[0]
 
-    # Touch handling
+
 
     def _handle_touch_event(self, event):
         """
@@ -887,14 +887,14 @@ class EmotionDisplay:
 
         now = time.time()
         closure = abs(dx) + abs(dy)
-        # how much the end returns toward the start
+
         closure_ratio = closure / max(dist, 1e-6)
 
-        # Long press
+
         if duration >= long_press_time and dist < drag_dist:
             return "long_press"
 
-        # Tap or double tap
+
         if dist < tap_dist and duration < long_press_time:
             if (
                 self.pending_tap_time > 0.0
@@ -905,15 +905,15 @@ class EmotionDisplay:
             self.pending_tap_time = now
             return None
 
-        # Circular motion: long path but ends near origin
+
         if (
             dist >= circle_dist
             and closure <= circle_return
-            and closure_ratio <= 0.25  # strong return to origin
+            and closure_ratio <= 0.25
         ):
             return "scroll"
 
-        # Drag / stroke
+
         if dist >= drag_dist:
             return "drag"
 
@@ -937,38 +937,38 @@ class EmotionDisplay:
             logger.debug("Gesture %s has no configured effect", gesture)
             return
 
-        # Immediately mark petting active to block further gestures
+
         self.state.petting_active = True
         self.state.gesture_busy_until = now + self.effect_busy_window
         self._discard_touch_events()
 
-        # Optional global effect cooldown to avoid stacking sounds/tts
+
         if now - self._last_effect_time < self.effect_queue_cooldown:
-            # Release lock if we skipped triggering to avoid perma-blocking
+
             self.state.petting_active = False
             logger.debug("Effect suppressed by cooldown")
             return
         self._last_effect_time = now
 
-        # Apply emotion immediately if configured
+
         emotion = effect.get('emotion')
         if emotion:
             self.set_emotion(emotion, transition_duration=0.4)
 
-        # Compute busy window (block new gestures) based on speak length
+
         busy_seconds = self.effect_busy_window
         speak_text = effect.get('speak')
         if isinstance(speak_text, str) and speak_text.strip():
-            estimated = (len(speak_text) / 10.0) + 1.5  # rough TTS duration
+            estimated = (len(speak_text) / 10.0) + 1.5
             busy_seconds = max(busy_seconds, estimated)
 
         self.state.gesture_busy_until = now + busy_seconds
 
-        # Side effects (tts/sound/hardware) via callback or command
+
         if self.effect_callback:
-            # Run callback asynchronously so the display loop keeps discarding
-            # touch events while petting is active; blocking here would let
-            # pygame queue grow and replay on release.
+
+
+
             def _cb_wrapper():
                 try:
                     self.effect_callback(effect)
@@ -977,12 +977,12 @@ class EmotionDisplay:
                     ValueError,
                     OSError,
                     TypeError,
-                ) as exc:  # pragma: no cover
+                ) as exc:
                     logger.error("Effect callback failed: %s", exc)
 
             threading.Thread(target=_cb_wrapper, daemon=True).start()
         else:
-            # As a fallback, push to command queue
+
             self.command_queue.put({
                 'type': 'APPLY_EFFECT',
                 'effect': effect

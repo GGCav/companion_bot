@@ -11,13 +11,13 @@ import time
 from pathlib import Path
 from datetime import datetime
 
-# Add src to path
+
 sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
 
 import yaml
 from llm.voice_pipeline import VoicePipeline
 
-# Configure logging (DEBUG level to match working test script)
+
 logging.basicConfig(
     level=logging.DEBUG,
     format='%(asctime)s - %(levelname)s - %(message)s'
@@ -40,7 +40,7 @@ class VoiceAssistantDemo:
         """Start the demo"""
         self.print_header()
 
-        # Test microphone
+
         print("\n🎙️  Testing microphone...")
         if not self.pipeline.test_microphone():
             print("❌ Microphone test failed!")
@@ -49,11 +49,11 @@ class VoiceAssistantDemo:
 
         print("✅ Microphone is working!\n")
 
-        # Set up callbacks
+
         self.pipeline.set_transcription_callback(self.on_transcription)
         self.pipeline.set_speech_callbacks(self.on_speech_start, self.on_speech_end)
 
-        # Start pipeline
+
         print("🚀 Starting voice assistant...\n")
         self.pipeline.start()
         self.is_running = True
@@ -126,7 +126,7 @@ class VoiceAssistantDemo:
         language = result['language']
         duration = result['duration']
 
-        # Add to history
+
         self.conversation_history.append({
             'timestamp': datetime.now(),
             'text': text,
@@ -135,10 +135,10 @@ class VoiceAssistantDemo:
             'duration': duration
         })
 
-        # Print result with visual formatting
+
         self.print_transcription_result(result)
 
-        # Simulate response (placeholder for actual LLM integration)
+
         self.simulate_response(text)
 
     def print_transcription_result(self, result: dict):
@@ -148,7 +148,7 @@ class VoiceAssistantDemo:
         language = result['language']
         duration = result['duration']
 
-        # Confidence indicator
+
         if confidence >= 0.8:
             conf_emoji = "✅"
             conf_level = "HIGH"
@@ -159,7 +159,7 @@ class VoiceAssistantDemo:
             conf_emoji = "❌"
             conf_level = "LOW"
 
-        # Print formatted output
+
         print("\n┌" + "─" * 78 + "┐")
         print(f"│ 💬 YOU SAID:" + " " * 63 + "│")
         print(f"│    \"{text}\"" + " " * (73 - len(text)) + "│")
@@ -173,7 +173,7 @@ class VoiceAssistantDemo:
         """Simulate assistant response (placeholder)"""
         text_lower = text.lower()
 
-        # Simple keyword-based responses
+
         responses = {
             'hello': "Hello! How can I help you today?",
             'hi': "Hi there! Nice to hear from you!",
@@ -194,7 +194,7 @@ class VoiceAssistantDemo:
         if not response:
             response = "I heard you! (LLM integration coming soon to generate smart responses)"
 
-        # Print bot response
+
         print("┌" + "─" * 78 + "┐")
         print(f"│ 🤖 BOT:" + " " * 68 + "│")
         print(f"│    {response}" + " " * (74 - len(response)) + "│")
@@ -221,11 +221,11 @@ class VoiceAssistantDemo:
                 print(f"   [{time_str}] #{i}: \"{entry['text']}\" "
                       f"(conf: {entry['confidence']:.0%})")
 
-            # Calculate average confidence
+
             avg_conf = sum(e['confidence'] for e in self.conversation_history) / len(self.conversation_history)
             print(f"\n   Average Confidence: {avg_conf:.0%}")
 
-        # Whisper model info
+
         stt_stats = stats.get('stt_stats', {})
         print(f"\n🤖 Whisper Model:")
         print(f"   Model Size: {stt_stats.get('model_size', 'N/A')}")
@@ -241,7 +241,7 @@ class VoiceAssistantDemo:
             return 1
 
         try:
-            # Keep running until interrupted
+
             while self.is_running:
                 time.sleep(0.1)
 
@@ -256,7 +256,7 @@ class VoiceAssistantDemo:
 
 def main():
     """Main entry point"""
-    # Load configuration
+
     config_path = Path(__file__).parent.parent / 'config' / 'settings.yaml'
 
     if not config_path.exists():
@@ -272,7 +272,7 @@ def main():
         print(f"❌ Failed to load config: {e}")
         return 1
 
-    # Create and run demo
+
     demo = VoiceAssistantDemo(config)
     return demo.run()
 

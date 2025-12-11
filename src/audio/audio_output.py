@@ -31,7 +31,7 @@ class AudioOutput:
         self.config = config
         self.audio_config = config['audio']['output']
 
-        # Initialize pygame mixer for sound effects
+
         pygame.mixer.pre_init(
             frequency=self.audio_config['sample_rate'],
             channels=self.audio_config['channels'],
@@ -39,7 +39,7 @@ class AudioOutput:
         )
         pygame.mixer.init()
 
-        # Audio playback queue
+
         self.playback_queue = queue.Queue()
         self.is_playing = False
         self.playback_thread: Optional[threading.Thread] = None
@@ -149,24 +149,24 @@ class PiperTTSProvider:
         self.config = config
         self.piper_config = config['speech']['tts']['piper']
 
-        # Piper binary and model paths
+
         self.piper_binary = self.piper_config['binary_path']
         self.model_path = self.piper_config['model_path']
         self.length_scale = self.piper_config.get('length_scale', 1.0)
         self.temp_dir = self.piper_config.get('temp_dir', '/tmp')
 
-        # Verify piper binary exists
+
         if not Path(self.piper_binary).exists():
             raise FileNotFoundError(f"Piper binary not found: {self.piper_binary}")
 
-        # Verify model file exists
+
         if not Path(self.model_path).exists():
             raise FileNotFoundError(f"Piper model not found: {self.model_path}")
 
-        # Initialize pygame mixer for audio playback
+
         pygame.mixer.init()
 
-        # Speech queue for async TTS
+
         self.speech_queue = queue.Queue()
         self.is_speaking = False
         self.speech_thread: Optional[threading.Thread] = None
@@ -201,11 +201,11 @@ class PiperTTSProvider:
             text: Text to synthesize
             wait: If True, wait for playback to finish
         """
-        # Generate unique temporary WAV file
+
         temp_wav = Path(self.temp_dir) / f"piper_{uuid.uuid4()}.wav"
 
         try:
-            # Call Piper binary to synthesize speech
+
             cmd = [
                 self.piper_binary,
                 '--model', self.model_path,
@@ -213,7 +213,7 @@ class PiperTTSProvider:
                 '--output_file', str(temp_wav)
             ]
 
-            # Run Piper with text input via stdin
+
             subprocess.run(
                 cmd,
                 input=text,
@@ -223,19 +223,19 @@ class PiperTTSProvider:
                 timeout=10
             )
 
-            # Play the generated WAV file
+
             if temp_wav.exists():
                 sound = pygame.mixer.Sound(str(temp_wav))
                 self.current_channel = sound.play()
 
                 if wait and self.current_channel:
-                    # Wait for playback to finish
+
                     while self.current_channel.get_busy():
                         pygame.time.wait(100)
 
-                # Clean up temporary file after a delay
+
                 if not wait:
-                    # Schedule cleanup
+
                     threading.Timer(2.0, lambda: self._cleanup_wav(temp_wav)).start()
                 else:
                     self._cleanup_wav(temp_wav)
@@ -286,7 +286,7 @@ class PiperTTSProvider:
             try:
                 text = self.speech_queue.get(timeout=0.5)
 
-                # Synthesize and play
+
                 self._synthesize_and_play(text, wait=True)
 
                 self.speech_queue.task_done()
@@ -301,10 +301,10 @@ class PiperTTSProvider:
     def stop_speaking(self):
         """Stop current speech"""
         try:
-            # Stop pygame playback
+
             pygame.mixer.stop()
 
-            # Clear queue
+
             while not self.speech_queue.empty():
                 try:
                     self.speech_queue.get_nowait()
@@ -360,20 +360,20 @@ class PyttxTTSProvider:
         self.config = config
         self.tts_config = config['speech']['tts']['pyttsx3']
 
-        # Initialize pyttsx3 engine
+
         self.engine = pyttsx3.init()
 
-        # Configure voice settings for cute pet character
+
         self.engine.setProperty('rate', self.tts_config['rate'])
         self.engine.setProperty('volume', self.tts_config['volume'])
 
-        # Set voice (if specific voice ID provided)
+
         voices = self.engine.getProperty('voices')
         voice_id = self.tts_config.get('voice_id', 0)
         if 0 <= voice_id < len(voices):
             self.engine.setProperty('voice', voices[voice_id].id)
 
-        # Speech queue for async TTS
+
         self.speech_queue = queue.Queue()
         self.is_speaking = False
         self.speech_thread: Optional[threading.Thread] = None
@@ -428,7 +428,7 @@ class PyttxTTSProvider:
             try:
                 text = self.speech_queue.get(timeout=0.5)
 
-                # Speak the text
+
                 self.engine.say(text)
                 self.engine.runAndWait()
 
@@ -445,7 +445,7 @@ class PyttxTTSProvider:
         """Stop current speech"""
         try:
             self.engine.stop()
-            # Clear queue
+
             while not self.speech_queue.empty():
                 try:
                     self.speech_queue.get_nowait()
@@ -517,15 +517,15 @@ class TextToSpeech:
         self.config = config
         provider_name = config['speech']['tts'].get('provider', 'pyttsx3')
 
-        # Create appropriate provider
+
         if provider_name == 'piper':
             logger.info("Initializing Piper TTS provider")
             self.provider = PiperTTSProvider(config)
-            self.engine = None  # Piper doesn't expose engine object
+            self.engine = None
         elif provider_name == 'pyttsx3':
             logger.info("Initializing pyttsx3 TTS provider")
             self.provider = PyttxTTSProvider(config)
-            self.engine = self.provider.engine  # Expose engine for backward compatibility
+            self.engine = self.provider.engine
         else:
             raise ValueError(f"Unknown TTS provider: {provider_name}. Use 'piper' or 'pyttsx3'")
 
@@ -572,10 +572,10 @@ class TextToSpeech:
 
 
 if __name__ == "__main__":
-    # Test audio output and TTS
+
     logging.basicConfig(level=logging.INFO)
 
-    # Mock config
+
     config = {
         'audio': {
             'output': {

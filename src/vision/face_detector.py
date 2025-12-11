@@ -21,13 +21,13 @@ class FaceDetector:
         self.face_config = config['vision']['face']
         self.processing_config = config['vision']['processing']
 
-        # Initialize MediaPipe Face Detection
+
         self.mp_face_detection = mp.solutions.face_detection
         self.detector = self.mp_face_detection.FaceDetection(
             min_detection_confidence=self.processing_config['min_detection_confidence']
         )
 
-        # Fallback to Haar Cascade if MediaPipe fails
+
         self.haar_cascade = cv2.CascadeClassifier(
             cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
         )

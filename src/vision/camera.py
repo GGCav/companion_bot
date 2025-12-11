@@ -42,16 +42,16 @@ class Camera:
         self.camera: Optional[object] = None
         self.use_picamera2 = PICAMERA2_AVAILABLE
 
-        # Frame buffer
+
         self.frame_queue = queue.Queue(maxsize=self.performance_config['buffer_size'])
         self.latest_frame: Optional[np.ndarray] = None
         self.frame_lock = threading.Lock()
 
-        # Threading
+
         self.is_running = False
         self.capture_thread: Optional[threading.Thread] = None
 
-        # FPS tracking
+
         self.fps_counter = 0
         self.fps_start_time = time.time()
         self.current_fps = 0.0
@@ -76,14 +76,14 @@ class Camera:
         """Initialize using picamera2 (recommended for Pi Camera)"""
         self.camera = Picamera2()
 
-        # Configure camera
+
         camera_config = self.camera.create_still_configuration(
             main={"size": (self.width, self.height)},
             controls={"FrameRate": self.fps}
         )
         self.camera.configure(camera_config)
 
-        # Apply settings
+
         if self.camera_config.get('hflip', False):
             self.camera.options['hflip'] = True
         if self.camera_config.get('vflip', False):
@@ -98,7 +98,7 @@ class Camera:
         if not self.camera.isOpened():
             raise RuntimeError("Failed to open camera with OpenCV")
 
-        # Set camera properties
+
         self.camera.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
         self.camera.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
         self.camera.set(cv2.CAP_PROP_FPS, self.fps)
@@ -114,7 +114,7 @@ class Camera:
         if self.use_picamera2:
             self.camera.start()
 
-        # Warm up camera
+
         warmup_time = self.config['system']['startup']['camera_warmup_time']
         logger.info(f"Camera warming up for {warmup_time}s...")
         time.sleep(warmup_time)
@@ -153,22 +153,22 @@ class Camera:
                 frame = self._grab_frame()
 
                 if frame is not None:
-                    # Update latest frame
+
                     with self.frame_lock:
                         self.latest_frame = frame
 
-                    # Add to queue (non-blocking)
+
                     try:
                         self.frame_queue.put_nowait(frame)
                     except queue.Full:
-                        # Drop oldest frame if queue is full
+
                         try:
                             self.frame_queue.get_nowait()
                             self.frame_queue.put_nowait(frame)
                         except queue.Empty:
                             pass
 
-                    # Update FPS counter
+
                     self._update_fps()
 
             except Exception as e:
@@ -184,21 +184,21 @@ class Camera:
         """
         try:
             if self.use_picamera2:
-                # Capture from picamera2
+
                 frame = self.camera.capture_array()
 
-                # Convert RGB to BGR for OpenCV compatibility
+
                 if len(frame.shape) == 3 and frame.shape[2] == 3:
                     frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
 
             else:
-                # Capture from OpenCV
+
                 ret, frame = self.camera.read()
                 if not ret:
                     logger.warning("Failed to read frame")
                     return None
 
-            # Apply rotation if specified
+
             if self.rotation != 0:
                 frame = self._rotate_frame(frame)
 
@@ -307,10 +307,10 @@ class Camera:
 
 
 if __name__ == "__main__":
-    # Test camera
+
     logging.basicConfig(level=logging.INFO)
 
-    # Mock config
+
     config = {
         'vision': {
             'camera': {
@@ -344,7 +344,7 @@ if __name__ == "__main__":
         while time.time() - start_time < 10:
             frame = camera.read()
             if frame is not None:
-                # Display frame (if running on Pi with display)
+
                 print(f"\rFPS: {camera.get_fps():.1f}", end='')
             time.sleep(0.1)
 

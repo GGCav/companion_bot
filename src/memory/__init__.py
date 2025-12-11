@@ -20,13 +20,10 @@ def initialize_memory(config: dict):
     Returns:
         Tuple of (user_memory, conversation_history) instances
     """
-    # Get database path from config
     db_path = config.get('memory', {}).get('database_path', 'data/companion.db')
 
-    # Initialize database
     database = Database(db_path)
 
-    # Create memory instances
     user_memory = UserMemory(database)
     conversation_history = ConversationHistory(database)
 

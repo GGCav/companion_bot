@@ -26,8 +26,6 @@ class ConversationHistory:
         self.db = database
         logger.info("ConversationHistory initialized")
 
-    # ==================== Conversation Persistence ====================
-
     def save_message(
         self,
         user_id: Optional[int],
@@ -98,8 +96,6 @@ class ConversationHistory:
         logger.info(f"Saved {count} messages for session {session_id}")
         return count
 
-    # ==================== Conversation Retrieval ====================
-
     def get_session_conversation(
         self,
         session_id: str,
@@ -167,7 +163,7 @@ class ConversationHistory:
         Returns:
             List of message dictionaries ordered oldest to newest
         """
-        # Get last N*2 messages (user + assistant pairs)
+
         query = '''
             SELECT role, message, emotion
             FROM conversations
@@ -178,7 +174,7 @@ class ConversationHistory:
 
         results = self.db.execute_query(query, (user_id, limit * 2))
 
-        # Reverse to get chronological order
+
         return list(reversed(results))
 
     def get_session_list(
@@ -219,8 +215,6 @@ class ConversationHistory:
             params = (limit,)
 
         return self.db.execute_query(query, params)
-
-    # ==================== Search & Analysis ====================
 
     def search_conversations(
         self,
@@ -273,7 +267,7 @@ class ConversationHistory:
         stats = {}
 
         if user_id:
-            # Total messages
+
             query = '''
                 SELECT COUNT(*) as count
                 FROM conversations
@@ -282,7 +276,7 @@ class ConversationHistory:
             result = self.db.execute_query(query, (user_id,), fetch_one=True)
             stats['total_messages'] = result['count'] if result else 0
 
-            # Total sessions
+
             query = '''
                 SELECT COUNT(DISTINCT session_id) as count
                 FROM conversations
@@ -291,13 +285,13 @@ class ConversationHistory:
             result = self.db.execute_query(query, (user_id,), fetch_one=True)
             stats['total_sessions'] = result['count'] if result else 0
 
-            # Average messages per session
+
             if stats['total_sessions'] > 0:
                 stats['avg_messages_per_session'] = stats['total_messages'] / stats['total_sessions']
             else:
                 stats['avg_messages_per_session'] = 0
 
-            # Most common emotions
+
             query = '''
                 SELECT emotion, COUNT(*) as count
                 FROM conversations
@@ -310,7 +304,7 @@ class ConversationHistory:
             stats['top_emotions'] = {row['emotion']: row['count'] for row in emotion_counts}
 
         else:
-            # Global stats
+
             query = 'SELECT COUNT(*) as count FROM conversations'
             result = self.db.execute_query(query, fetch_one=True)
             stats['total_messages'] = result['count'] if result else 0
@@ -324,8 +318,6 @@ class ConversationHistory:
             stats['total_users'] = result['count'] if result else 0
 
         return stats
-
-    # ==================== Cleanup ====================
 
     def delete_session(self, session_id: str) -> bool:
         """
@@ -378,8 +370,6 @@ class ConversationHistory:
             Number of conversations deleted
         """
         return self.db.cleanup_old_data(days)
-
-    # ==================== Utility ====================
 
     @staticmethod
     def generate_session_id() -> str:

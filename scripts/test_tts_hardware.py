@@ -8,13 +8,13 @@ import sys
 import logging
 from pathlib import Path
 
-# Add src to path
+
 sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
 
 import yaml
 from llm.tts_engine import TTSEngine
 
-# Configure logging
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s'
@@ -32,7 +32,7 @@ def test_audio_device():
     try:
         import subprocess
 
-        # Check ALSA devices
+
         print("\n📻 ALSA Playback Devices:")
         result = subprocess.run(['aplay', '-l'], capture_output=True, text=True)
         if result.returncode == 0:
@@ -40,7 +40,7 @@ def test_audio_device():
         else:
             print("   ⚠️  Could not list ALSA devices")
 
-        # Check default device
+
         print("\n🔊 Testing default audio device:")
         print("   Playing a brief test tone...")
         result = subprocess.run(
@@ -72,7 +72,7 @@ def test_tts_engine(config):
         tts = TTSEngine(config)
         print("   ✅ TTS engine initialized")
 
-        # Display configuration
+
         print("\n⚙️  TTS Configuration:")
         print(f"   Provider: {config.get('speech', {}).get('tts', {}).get('provider', 'pyttsx3')}")
         tts_config = config.get('speech', {}).get('tts', {}).get('pyttsx3', {})
@@ -80,7 +80,7 @@ def test_tts_engine(config):
         print(f"   Volume: {tts_config.get('volume', 0.9)}")
         print(f"   Pitch: {tts_config.get('pitch', 1.5)}")
 
-        # Test basic speech
+
         print("\n🔊 Testing basic speech:")
         print("   Speaking: 'Hello! Audio test.'")
         tts.speak("Hello! Audio test.", wait=True)
@@ -136,7 +136,7 @@ def test_multi_emotion_speech(tts):
     print("\nTesting emotion transitions within a single response...")
     print("")
 
-    # Create segments with different emotions
+
     segments = [
         ('happy', "Hi there! I'm glad to see you!"),
         ('curious', "What have you been up to?"),
@@ -179,7 +179,7 @@ def main():
     print("Make sure speakers are connected to the wm8960-soundcard.")
     print("")
 
-    # Load configuration
+
     config_path = Path(__file__).parent.parent / 'config' / 'settings.yaml'
 
     if not config_path.exists():
@@ -195,27 +195,27 @@ def main():
         print(f"❌ Failed to load config: {e}")
         return 1
 
-    # Run tests
+
     try:
-        # Test 1: Audio device information
+
         test_audio_device()
 
-        # Test 2: Initialize TTS engine
+
         tts = test_tts_engine(config)
         if not tts:
             print("\n❌ Cannot continue without TTS engine")
             return 1
 
-        # Test 3: All emotion voices
+
         test_emotion_voices(tts)
 
-        # Test 4: Multi-emotion speech
+
         test_multi_emotion_speech(tts)
 
-        # Test 5: Statistics
+
         test_statistics(tts)
 
-        # Cleanup
+
         print("\n" + "="*70)
         print("CLEANUP")
         print("="*70)
@@ -231,7 +231,7 @@ def main():
         logger.error("Test error", exc_info=True)
         return 1
 
-    # Summary
+
     print("\n" + "="*70)
     print("TEST SUMMARY")
     print("="*70)

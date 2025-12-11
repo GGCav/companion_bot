@@ -59,12 +59,12 @@ class ProceduralFaceRenderer:
     def update_state(self, delta_time: float, speaking_level: float, listening: bool):
         self._speaking_target = _clamp01(speaking_level)
 
-        # Smooth mouth openness
+
         smooth = max(1e-3, self.mouth_smooth)
         blend = 1.0 - math.exp(-smooth * max(delta_time, 0.0))
         self._mouth_level = _lerp(self._mouth_level, self._speaking_target, blend)
 
-        # Blink logic
+
         self._time_since_blink += delta_time
         if not self._is_blinking and self._time_since_blink >= self._next_blink:
             self._is_blinking = True
@@ -77,7 +77,7 @@ class ProceduralFaceRenderer:
                 self._time_since_blink = 0.0
                 self._next_blink = self._random_blink_interval()
 
-        # Listening pulse for subtle scale/brightness
+
         if listening:
             self._listening_phase += delta_time * self.listening_pulse_speed
         else:
@@ -113,7 +113,7 @@ class ProceduralFaceRenderer:
 
         listening_scale = 1.0 + (math.sin(self._listening_phase) * self.listening_pulse_strength if listening else 0.0)
 
-        # Eyes
+
         for direction in (-1, 1):
             jitter_x = random.uniform(-self.eye_jitter, self.eye_jitter)
             jitter_y = random.uniform(-self.eye_jitter, self.eye_jitter)
@@ -126,10 +126,10 @@ class ProceduralFaceRenderer:
             self._draw_eye(eye_center, int(eye_width * listening_scale), int(eye_height * listening_scale * blink_scale),
                            eye_color, pupil_color, pupil_size, params.get("pupil_offset", 0))
 
-            # Brows
+
             self._draw_brow(eye_center, eye_width, eye_height, brow_raise, brow_slant * direction, brow_color)
 
-        # Mouth
+
         mouth_open = mouth_base + self._mouth_level * params.get("mouth_sensitivity", 0.6)
         mouth_open = _clamp01(mouth_open)
         self._draw_mouth((w // 2, int(h * 0.7)), mouth_width, mouth_height, mouth_curve, mouth_open, mouth_color)
@@ -204,7 +204,7 @@ class ProceduralFaceRenderer:
             int(eye_center[0] + eye_width * 0.6),
             int(eye_center[1] - eye_height * (0.8 + raise_amt) + slant * 10),
         )
-        # Older pygame on Pi may not accept keyword args for width
+
         pygame.draw.line(self.surface, color, start, end, 4)
 
     def _draw_mouth(
@@ -224,7 +224,7 @@ class ProceduralFaceRenderer:
         end = (center[0] + w2, center[1])
         control = (center[0], center[1] + curve_offset)
 
-        # Approximate quadratic curve with lines
+
         points = []
         steps = 20
         for i in range(steps + 1):
@@ -233,6 +233,6 @@ class ProceduralFaceRenderer:
             y = int((1 - t) * (1 - t) * start[1] + 2 * (1 - t) * t * control[1] + t * t * end[1])
             points.append((x, y))
 
-        # Use positional width for compatibility
+
         pygame.draw.lines(self.surface, color, False, points, h2)
 

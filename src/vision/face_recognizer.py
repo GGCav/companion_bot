@@ -23,7 +23,7 @@ class FaceRecognizer:
         self.face_config = config['vision']['face']
         self.encodings_file = Path("data/face_encodings.pkl")
 
-        # Storage for known faces
+
         self.known_encodings: List[np.ndarray] = []
         self.known_names: List[str] = []
         self.known_user_ids: List[int] = []
@@ -50,14 +50,14 @@ class FaceRecognizer:
         rgb_face = cv2.cvtColor(face_crop, cv2.COLOR_BGR2RGB)
 
         try:
-            # Get face encoding
+
             encodings = face_recognition.face_encodings(rgb_face)
             if not encodings:
                 return None
 
             encoding = encodings[0]
 
-            # Compare with known faces
+
             distances = face_recognition.face_distance(self.known_encodings, encoding)
 
             if len(distances) == 0:
@@ -66,7 +66,7 @@ class FaceRecognizer:
             min_distance_idx = np.argmin(distances)
             min_distance = distances[min_distance_idx]
 
-            # Check if below threshold
+
             if min_distance < self.face_config['recognition_threshold']:
                 return {
                     'user_id': self.known_user_ids[min_distance_idx],

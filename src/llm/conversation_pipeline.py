@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 from typing import Optional, Callable, Dict
 
-# Add parent directory to path
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from llm.voice_pipeline import VoicePipeline
@@ -50,7 +50,7 @@ class ConversationPipeline:
         self.user_memory = user_memory
         self.conversation_history = conversation_history
 
-        # Initialize components
+
         logger.info("Initializing conversation pipeline components...")
 
         self.voice_input = VoicePipeline(config)
@@ -62,19 +62,19 @@ class ConversationPipeline:
         )
         self.tts = TTSEngine(config)
 
-        # State
+
         self.is_running = False
         self.is_processing = False
 
-        # Callbacks
+
         self.on_listening: Optional[Callable[[], None]] = None
         self.on_transcribed: Optional[Callable[[str], None]] = None
         self.on_thinking: Optional[Callable[[], None]] = None
-        self.on_responding: Optional[Callable[[str, str], None]] = None  # (text, emotion)
+        self.on_responding: Optional[Callable[[str, str], None]] = None
         self.on_speaking: Optional[Callable[[], None]] = None
         self.on_complete: Optional[Callable[[], None]] = None
 
-        # Statistics
+
         self.total_conversations = 0
         self.total_response_time = 0.0
         self.average_response_time = 0.0
@@ -89,14 +89,14 @@ class ConversationPipeline:
 
         logger.info("Starting conversation pipeline...")
 
-        # Set up voice input callbacks
+
         self.voice_input.set_transcription_callback(self._on_transcription)
         self.voice_input.set_speech_callbacks(
             on_start=self._on_speech_start,
             on_end=self._on_speech_end
         )
 
-        # Start voice input
+
         self.voice_input.start()
 
         self.is_running = True
@@ -111,7 +111,7 @@ class ConversationPipeline:
 
         self.is_running = False
 
-        # Stop components
+
         self.voice_input.stop()
         self.tts.stop_speaking()
 
@@ -121,12 +121,12 @@ class ConversationPipeline:
         """Called when user starts speaking"""
         logger.debug("User started speaking")
 
-        # Stop any ongoing TTS
+
         if self.tts.is_speaking:
             self.tts.stop_speaking()
             logger.info("Interrupted bot speech")
 
-        # Trigger callback
+
         if self.on_listening:
             self.on_listening()
 
@@ -150,11 +150,11 @@ class ConversationPipeline:
 
         logger.info(f"Transcribed: '{transcribed_text}' (confidence: {confidence:.0%})")
 
-        # Trigger callback
+
         if self.on_transcribed:
             self.on_transcribed(transcribed_text)
 
-        # Process and respond - route to streaming or non-streaming based on config
+
         streaming_enabled = self.config.get('llm', {}).get('streaming', {}).get('enabled', False)
 
         if streaming_enabled:
@@ -179,37 +179,37 @@ class ConversationPipeline:
         start_time = time.time()
 
         try:
-            # Trigger thinking callback
+
             if self.on_thinking:
                 self.on_thinking()
 
-            # Generate response using conversation manager
-            # The LLM chooses the emotion(s) and returns it in metadata
+
+
             response_text, metadata = self.conversation_manager.process_user_input(user_text)
 
-            # Get emotion and emotion segments from metadata
+
             emotion = metadata.get('emotion', 'happy')
             emotion_segments = metadata.get('emotion_segments', None)
 
             logger.info(f"Generated response ({emotion}): {response_text}")
 
-            # Trigger responding callback
+
             if self.on_responding:
                 self.on_responding(response_text, emotion)
 
-            # Speak response - use segmented speech if available
+
             if self.on_speaking:
                 self.on_speaking()
 
             if emotion_segments and len(emotion_segments) > 1:
-                # Multi-emotion response - speak each segment with its emotion
+
                 logger.info(f"Using segmented speech with {len(emotion_segments)} emotion transitions")
                 self.tts.speak_segments_with_emotions(emotion_segments, wait=True)
             else:
-                # Single emotion or no segments - use traditional method
+
                 self.tts.speak_with_emotion(response_text, emotion, wait=True)
 
-            # Update statistics
+
             response_time = time.time() - start_time
             self.total_conversations += 1
             self.total_response_time += response_time
@@ -217,7 +217,7 @@ class ConversationPipeline:
 
             logger.info(f"Complete conversation cycle in {response_time:.2f}s")
 
-            # Trigger complete callback
+
             if self.on_complete:
                 self.on_complete()
 
@@ -246,36 +246,36 @@ class ConversationPipeline:
         combined_response = ""
 
         try:
-            # Trigger thinking callback
+
             if self.on_thinking:
                 self.on_thinking()
 
             logger.info("Using streaming response generation")
 
-            # Stream response segments from conversation manager
+
             for emotion, text in self.conversation_manager.stream_generate_with_personality(user_text):
                 segment_count += 1
                 combined_response += " " + text if combined_response else text
 
-                # Trigger responding callback on first segment
+
                 if first_segment:
                     if self.on_responding:
                         self.on_responding(text, emotion)
                     first_segment = False
 
-                    # Log time to first segment
+
                     time_to_first = time.time() - start_time
                     logger.info(f"First segment ready in {time_to_first:.2f}s (emotion: {emotion})")
 
-                # Trigger speaking callback
+
                 if self.on_speaking:
                     self.on_speaking()
 
-                # Speak this segment immediately
+
                 logger.info(f"Speaking segment {segment_count} ({emotion}): {text[:40]}...")
                 self.tts.speak_with_emotion(text, emotion, wait=True)
 
-            # Update statistics
+
             response_time = time.time() - start_time
             self.total_conversations += 1
             self.total_response_time += response_time
@@ -283,13 +283,13 @@ class ConversationPipeline:
 
             logger.info(f"Streaming conversation complete in {response_time:.2f}s ({segment_count} segments)")
 
-            # Trigger complete callback
+
             if self.on_complete:
                 self.on_complete()
 
         except Exception as e:
             logger.error(f"Error processing streaming conversation: {e}", exc_info=True)
-            # Try to speak error message
+
             try:
                 self.tts.speak_with_emotion("Sorry, I had trouble with that.", "sad", wait=True)
             except Exception as tts_error:
@@ -420,7 +420,7 @@ class ConversationPipeline:
 
 
 if __name__ == "__main__":
-    # Test conversation pipeline
+
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s - %(levelname)s - %(message)s'
@@ -432,7 +432,7 @@ if __name__ == "__main__":
     print("Conversation Pipeline Test")
     print("=" * 70)
 
-    # Load config
+
     config_path = Path(__file__).parent.parent.parent / 'config' / 'settings.yaml'
 
     if config_path.exists():
@@ -441,14 +441,14 @@ if __name__ == "__main__":
         print("✅ Config loaded")
     else:
         print("❌ Config not found, using mock config")
-        # Would need full mock config here
+
         sys.exit(1)
 
-    # Initialize pipeline
+
     print("\nInitializing pipeline...")
     pipeline = ConversationPipeline(config)
 
-    # Test text-only mode first
+
     print("\n" + "=" * 70)
     print("TEXT MODE TEST (no voice)")
     print("=" * 70)
@@ -465,7 +465,7 @@ if __name__ == "__main__":
         print(f"Bot: {response}")
         time.sleep(0.5)
 
-    # Show stats
+
     stats = pipeline.get_statistics()
     print("\n" + "=" * 70)
     print("Statistics:")
@@ -475,7 +475,7 @@ if __name__ == "__main__":
     print(f"LLM requests: {stats['llm']['total_requests']}")
     print(f"Current emotion: {stats['conversation']['current_emotion']}")
 
-    # Test voice mode
+
     print("\n" + "=" * 70)
     print("VOICE MODE TEST")
     print("=" * 70)
@@ -486,7 +486,7 @@ if __name__ == "__main__":
     try:
         pipeline.start()
 
-        # Keep running
+
         while True:
             time.sleep(0.1)
 

@@ -14,14 +14,14 @@ import numpy as np
 import torch
 
 try:
-    import whisper  # type: ignore
-except ImportError:  # pragma: no cover
-    whisper = None  # type: ignore
+    import whisper
+except ImportError:
+    whisper = None
 
 try:
-    from faster_whisper import WhisperModel  # type: ignore
-except ImportError:  # pragma: no cover
-    WhisperModel = None  # type: ignore
+    from faster_whisper import WhisperModel
+except ImportError:
+    WhisperModel = None
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +42,7 @@ class STTEngine:
         self.fw_config = self.stt_config.get('faster_whisper', {})
         self.audio_config = config['audio']['input']
 
-        # Provider selection
+
         self.provider = self.stt_config.get('provider', 'whisper')
         self.model_size = self.whisper_config.get('model_size', 'tiny')
         self.device = self.whisper_config.get('device', 'cpu')
@@ -54,12 +54,12 @@ class STTEngine:
         else:
             self.compute_type = None
 
-        # Performance tracking
+
         self.total_transcriptions = 0
         self.total_time = 0.0
         self.avg_confidence = 0.0
 
-        # Load model
+
         logger.info(
             "Loading STT model (%s): %s on %s",
             self.provider,
@@ -92,7 +92,7 @@ class STTEngine:
                 )
                 return model
 
-            # Default to openai/whisper
+
             if whisper is None:
                 raise ImportError("openai-whisper not installed")
             model = whisper.load_model(
@@ -100,7 +100,7 @@ class STTEngine:
                 device=self.device
             )
 
-            # Optimize for inference
+
             if self.device != 'cpu':
                 logger.info("Applying GPU optimizations")
                 model = model.half()
@@ -112,7 +112,7 @@ class STTEngine:
 
         except Exception as e:
             logger.error("Failed to load STT model: %s", e)
-            # Fallback to smallest
+
             if self.provider == 'faster-whisper' and WhisperModel is not None:
                 return WhisperModel('tiny', device='cpu', compute_type='int8')
             if whisper is not None:
@@ -132,7 +132,7 @@ class STTEngine:
         start_time = time.time()
 
         try:
-            # Save audio to temporary WAV file (Whisper expects file)
+
             temp_file = self._save_temp_audio(audio_data)
 
             if self.provider == 'faster-whisper':
@@ -140,28 +140,28 @@ class STTEngine:
             else:
                 result = self._transcribe_whisper(str(temp_file))
 
-            # Clean up temp file
+
             temp_file.unlink()
 
-            # Extract results
+
             text = result['text'].strip()
             detected_language = result.get('language', self.language)
 
-            # Calculate average confidence from segments
+
             segments = result.get('segments', [])
             if segments:
                 confidences = []
                 for segment in segments:
-                    # Whisper doesn't directly provide confidence, estimate from logprobs
+
                     avg_logprob = segment.get('avg_logprob', -1.0)
-                    # Convert logprob to approximate confidence (0-1)
+
                     confidence = np.exp(avg_logprob)
                     confidences.append(confidence)
                 avg_confidence = np.mean(confidences)
             else:
-                avg_confidence = 0.5  # Default if no segments
+                avg_confidence = 0.5
 
-            # Performance tracking
+
             duration = time.time() - start_time
             self.total_transcriptions += 1
             self.total_time += duration
@@ -198,11 +198,11 @@ class STTEngine:
         Returns:
             Dictionary with transcription results
         """
-        # Convert float32 to int16
+
         if audio_array.dtype == np.float32 or audio_array.dtype == np.float64:
             audio_array = (audio_array * 32767).astype(np.int16)
 
-        # Convert to bytes
+
         audio_bytes = audio_array.tobytes()
 
         return self.transcribe_audio(audio_bytes)
@@ -217,14 +217,14 @@ class STTEngine:
         Returns:
             Path to temporary file
         """
-        # Create temporary file
+
         temp_file = Path(tempfile.mktemp(suffix='.wav'))
 
         try:
-            # Write WAV file
+
             with wave.open(str(temp_file), 'wb') as wf:
                 wf.setnchannels(self.audio_config['channels'])
-                wf.setsampwidth(2)  # 16-bit = 2 bytes
+                wf.setsampwidth(2)
                 wf.setframerate(self.audio_config['sample_rate'])
                 wf.writeframes(audio_data)
 
@@ -298,7 +298,7 @@ class STTEngine:
             Dictionary with transcription results
         """
         try:
-            # Read audio file
+
             with wave.open(audio_file, 'rb') as wf:
                 audio_data = wf.readframes(wf.getnframes())
 
@@ -357,7 +357,7 @@ class STTEngine:
 
     def cleanup(self):
         """Clean up resources"""
-        # Clear model from memory
+
         if hasattr(self, 'model'):
             del self.model
             if torch.cuda.is_available():
@@ -366,7 +366,7 @@ class STTEngine:
         logger.info("STT Engine cleanup complete")
 
 
-# Optimized wrapper for real-time transcription
+
 class RealtimeSTT:
     """Real-time speech-to-text optimized for mini microphone"""
 
@@ -381,7 +381,7 @@ class RealtimeSTT:
         self.config = config
         self.stt_engine = stt_engine or STTEngine(config)
 
-        # Audio preprocessing for mini microphones
+
         self.sample_rate = config['audio']['input']['sample_rate']
         self.normalize_audio = True
         self.noise_reduction = config['audio']['processing']['noise_reduction']
@@ -398,21 +398,21 @@ class RealtimeSTT:
         Returns:
             Transcription result
         """
-        # Preprocess audio
+
         audio_array = np.frombuffer(audio_data, dtype=np.int16)
 
-        # Normalize volume (mini mics often have low volume)
+
         if self.normalize_audio:
             audio_array = self._normalize_audio(audio_array)
 
-        # Apply noise reduction if enabled
+
         if self.noise_reduction:
             audio_array = self._reduce_noise(audio_array)
 
-        # Convert back to bytes
+
         processed_audio = audio_array.tobytes()
 
-        # Transcribe
+
         return self.stt_engine.transcribe_audio(processed_audio)
 
     def _normalize_audio(self, audio: np.ndarray) -> np.ndarray:
@@ -425,14 +425,14 @@ class RealtimeSTT:
         Returns:
             Normalized audio
         """
-        # Calculate RMS
+
         rms = np.sqrt(np.mean(audio.astype(np.float32) ** 2))
 
-        if rms < 100:  # Very quiet
-            # Amplify
+        if rms < 100:
+
             target_rms = 3000
             gain = target_rms / (rms + 1e-6)
-            gain = min(gain, 10.0)  # Limit max gain
+            gain = min(gain, 10.0)
             audio = (audio.astype(np.float32) * gain).astype(np.int16)
             logger.debug(f"Audio normalized, gain: {gain:.2f}x")
 
@@ -448,10 +448,10 @@ class RealtimeSTT:
         Returns:
             Noise-reduced audio
         """
-        # Simple high-pass filter to remove low-frequency noise
+
         from scipy import signal
 
-        # High-pass filter at 80 Hz (removes rumble/hum)
+
         sos = signal.butter(4, 80, 'hp', fs=self.sample_rate, output='sos')
         filtered = signal.sosfilt(sos, audio.astype(np.float32))
 
@@ -464,10 +464,10 @@ class RealtimeSTT:
 
 
 if __name__ == "__main__":
-    # Test STT engine
+
     logging.basicConfig(level=logging.INFO)
 
-    # Mock config
+
     config = {
         'speech': {
             'stt': {
@@ -496,11 +496,11 @@ if __name__ == "__main__":
     print(f"\nSupported languages: {len(stt.get_supported_languages())} languages")
     print(f"Model: {stt.model_size} on {stt.device}")
 
-    # Test with a sample audio file (if available)
+
     print("\nReady for transcription!")
     print("Use the RealtimeSTT class with AudioInput for live transcription.")
 
-    # Show performance stats
+
     stats = stt.get_performance_stats()
     print(f"\nPerformance: {stats}")
 

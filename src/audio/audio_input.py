@@ -35,20 +35,20 @@ class AudioInput:
 
         self.pyaudio = pyaudio.PyAudio()
         self.stream: Optional[pyaudio.Stream] = None
-        # Limit queue size to prevent memory issues (100 chunks ~= 6 seconds at 16kHz, ~2 seconds at 44kHz)
+
         self.audio_queue = queue.Queue(maxsize=100)
-        # Small queue for level monitoring (only keep latest chunk)
+
         self.level_queue = queue.Queue(maxsize=1)
 
         self.is_recording = False
         self.is_listening = False
         self.record_thread: Optional[threading.Thread] = None
-        
-        # Diagnostic counter for callback verification
+
+
         self._callback_count = 0
         self._last_callback_log = 0
 
-        # Voice Activity Detection
+
         self.vad = webrtcvad.Vad(self.vad_config['vad_aggressiveness'])
 
         self._initialize_audio_device()
@@ -58,10 +58,10 @@ class AudioInput:
         device_index = self.audio_config.get('device_index')
 
         if device_index is None:
-            # Use default device
+
             logger.info("Using default audio input device")
         else:
-            # Verify the device exists
+
             try:
                 device_info = self.pyaudio.get_device_info_by_index(device_index)
                 logger.info(f"Using audio device: {device_info['name']}")
@@ -95,7 +95,7 @@ class AudioInput:
         try:
             logger.info(f"Opening audio stream: device={self.device_index}, rate={self.sample_rate}, "
                        f"channels={self.channels}, chunk={self.chunk_size}")
-            
+
             self.stream = self.pyaudio.open(
                 format=pyaudio.paInt16,
                 channels=self.channels,
@@ -108,8 +108,8 @@ class AudioInput:
 
             self.is_listening = True
             self.stream.start_stream()
-            
-            # Verify stream is active
+
+
             if self.stream.is_active():
                 logger.info("✓ Audio input started successfully and stream is active")
             else:
@@ -135,24 +135,24 @@ class AudioInput:
 
     def _audio_callback(self, in_data, frame_count, time_info, status):
         """Callback for audio stream"""
-        # Diagnostic: count callbacks
+
         self._callback_count += 1
-        if self._callback_count - self._last_callback_log >= 50:  # Log every 50 callbacks
+        if self._callback_count - self._last_callback_log >= 50:
             audio_array = np.frombuffer(in_data, dtype=np.int16)
             level = np.abs(audio_array).mean()
             logger.debug(f"Callback #{self._callback_count}: received {len(in_data)} bytes, level={level:.1f}")
             self._last_callback_log = self._callback_count
-        
-        # Status flags: 1=InputUnderflow, 2=InputOverflow, 4=OutputUnderflow, 8=OutputOverflow
+
+
         if status:
-            if status == 2:  # Input overflow
+            if status == 2:
                 logger.debug(f"Input buffer overflow (status={status}) - data coming faster than processing")
             else:
                 logger.warning(f"Audio callback status: {status}")
 
-        # Always update level queue for monitoring (keep only latest chunk)
+
         try:
-            # Clear old data and add new
+
             if self.level_queue.full():
                 try:
                     self.level_queue.get_nowait()
@@ -160,9 +160,9 @@ class AudioInput:
                     pass
             self.level_queue.put_nowait(in_data)
         except:
-            pass  # Ignore errors in level monitoring
+            pass
 
-        # Add to recording queue if recording
+
         if self.is_recording:
             try:
                 self.audio_queue.put_nowait(in_data)
@@ -206,7 +206,7 @@ class AudioInput:
         if self.record_thread:
             self.record_thread.join(timeout=2.0)
 
-        # Collect all audio data from queue
+
         audio_data = []
         while not self.audio_queue.empty():
             try:
@@ -226,10 +226,10 @@ class AudioInput:
 
         while self.is_recording:
             try:
-                # Get audio chunk (wait with timeout)
+
                 audio_chunk = self.audio_queue.get(timeout=0.1)
 
-                # Check if chunk contains voice
+
                 is_speech = self._detect_voice(audio_chunk)
 
                 if not is_speech:
@@ -254,22 +254,22 @@ class AudioInput:
         Returns:
             True if voice detected, False otherwise
         """
-        # Convert to numpy array
+
         audio_array = np.frombuffer(audio_chunk, dtype=np.int16)
 
-        # Simple amplitude-based detection as fallback
+
         amplitude = np.abs(audio_array).mean()
         if amplitude < self.vad_config['silence_threshold']:
             return False
 
-        # Use WebRTC VAD for more accurate detection
+
         try:
-            # VAD requires specific frame durations (10, 20, or 30 ms)
-            # Ensure audio chunk is the right size
-            frame_duration = 30  # ms
+
+
+            frame_duration = 30
             frame_size = int(self.sample_rate * frame_duration / 1000)
 
-            # Pad or trim to correct size
+
             if len(audio_array) < frame_size:
                 audio_array = np.pad(audio_array, (0, frame_size - len(audio_array)))
             elif len(audio_array) > frame_size:
@@ -313,20 +313,20 @@ class AudioInput:
             return 0.0
 
         try:
-            # Peek at the latest audio chunk without removing it
+
             if self.level_queue.empty():
                 return 0.0
-            
+
             audio_chunk = self.level_queue.get_nowait()
             audio_array = np.frombuffer(audio_chunk, dtype=np.int16)
-            level = np.abs(audio_array).mean() / 32768.0  # Normalize to 0-1
-            
-            # Put it back for next check
+            level = np.abs(audio_array).mean() / 32768.0
+
+
             try:
                 self.level_queue.put_nowait(audio_chunk)
             except queue.Full:
                 pass
-            
+
             return min(1.0, level)
 
         except (queue.Empty, Exception) as e:
@@ -342,10 +342,10 @@ class AudioInput:
 
 
 if __name__ == "__main__":
-    # Test audio input
+
     logging.basicConfig(level=logging.INFO)
 
-    # Mock config for testing
+
     config = {
         'audio': {
             'input': {

@@ -9,13 +9,13 @@ import logging
 import time
 from pathlib import Path
 
-# Add src to path
+
 sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
 
 import yaml
 from llm import OllamaClient, ConversationManager, TTSEngine
 
-# Configure logging
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s'
@@ -35,7 +35,7 @@ def test_ollama_connection(config):
     if client.is_available:
         print("✅ Ollama is running and available")
 
-        # Get model info
+
         info = client.get_model_info()
         if info:
             print(f"   Model: {info.get('model', 'Unknown')}")
@@ -84,7 +84,7 @@ def test_personality_prompts(config):
         print("⏭️  Skipping (Ollama not available)")
         return False
 
-    # Test that LLM autonomously chooses appropriate emotions
+
     test_prompts = [
         ("Hello! How are you today?", "should express greeting emotion"),
         ("I just won a prize!", "should express excited/happy emotion"),
@@ -103,7 +103,7 @@ def test_personality_prompts(config):
         response = result['response']
         print(f"   Response: {response}")
 
-        # Verify response includes emotion tag format: [emotion] text
+
         if response.startswith('[') and ']' in response:
             emotion_end = response.index(']')
             emotion = response[1:emotion_end]
@@ -146,7 +146,7 @@ def test_conversation_manager(config):
 
         time.sleep(0.5)
 
-    # Show summary
+
     print("─" * 70)
     print(manager.get_conversation_summary())
 
@@ -163,7 +163,7 @@ def test_tts_engine(config):
 
     print("\nAvailable voices:")
     voices = tts.get_available_voices()
-    for voice in voices[:3]:  # Show first 3
+    for voice in voices[:3]:
         print(f"   [{voice['index']}] {voice['name']}")
 
     print("\nTesting TTS with emotions...")
@@ -200,7 +200,7 @@ def interactive_mode(config):
 
     try:
         while True:
-            # Get user input
+
             user_input = input("\n👤 You: ").strip()
 
             if not user_input:
@@ -210,15 +210,15 @@ def interactive_mode(config):
                 print("\n👋 Goodbye!")
                 break
 
-            # Generate response
+
             conversation_num += 1
             response, metadata = manager.process_user_input(user_input)
 
-            # Display response
+
             print(f"🤖 Bot ({metadata['emotion']}): {response}")
 
-            # Show metadata
-            if conversation_num % 3 == 0:  # Every 3 messages
+
+            if conversation_num % 3 == 0:
                 print(f"    [⏱️  {metadata['response_time']:.2f}s | "
                       f"🎭 {metadata['emotion']} | "
                       f"📊 {metadata['tokens']} tokens]")
@@ -226,7 +226,7 @@ def interactive_mode(config):
     except KeyboardInterrupt:
         print("\n\n👋 Goodbye!")
 
-    # Show final stats
+
     print("\n" + "─" * 70)
     print(manager.get_conversation_summary())
 
@@ -247,21 +247,21 @@ def test_emotion_segments(config):
 
     print("\n📊 Testing emotion segments...")
 
-    # Test with a prompt that might generate multiple emotions
+
     response, metadata = manager.process_user_input(
         "Tell me a short story with different emotions!"
     )
 
     print(f"\n🤖 Response: {response}")
 
-    # Check metadata structure
+
     assert 'emotion_segments' in metadata, "metadata should include emotion_segments"
     assert isinstance(metadata['emotion_segments'], list), "emotion_segments should be a list"
 
     segments = metadata['emotion_segments']
     print(f"\n✅ Found {len(segments)} emotion segment(s)")
 
-    # Verify each segment structure
+
     for i, segment in enumerate(segments, 1):
         assert isinstance(segment, tuple), f"Segment {i} should be a tuple"
         assert len(segment) == 2, f"Segment {i} should have 2 elements (emotion, text)"
@@ -295,7 +295,7 @@ def test_segmented_tts(config):
     for i, (emotion, text) in enumerate(segments, 1):
         print(f"   Segment {i}: ({emotion}) {text}")
 
-    # Speak all segments
+
     tts.speak_segments_with_emotions(segments, wait=True)
 
     print("\n✅ Segmented TTS test complete")
@@ -308,7 +308,7 @@ def main():
     print("🤖 LLM INTEGRATION TEST SUITE")
     print("="*70)
 
-    # Load configuration
+
     config_path = Path(__file__).parent.parent / 'config' / 'settings.yaml'
 
     if not config_path.exists():
@@ -324,7 +324,7 @@ def main():
         print(f"❌ Failed to load config: {e}")
         return 1
 
-    # Run tests
+
     tests = [
         ("Ollama Connection", test_ollama_connection),
         ("Text Generation", test_text_generation),
@@ -349,7 +349,7 @@ def main():
             logger.error("Test error", exc_info=True)
             results.append((test_name, False))
 
-    # Summary
+
     print("\n" + "="*70)
     print("TEST SUMMARY")
     print("="*70)
@@ -363,7 +363,7 @@ def main():
 
     print(f"\nTotal: {passed}/{total} tests passed")
 
-    # Interactive mode
+
     if passed > 0:
         print("\n" + "="*70)
         response = input("\nRun interactive mode? (y/n): ").strip().lower()

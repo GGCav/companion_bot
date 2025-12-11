@@ -11,13 +11,13 @@ import time
 from pathlib import Path
 from datetime import datetime
 
-# Add src to path
+
 sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
 
 import yaml
 from llm import ConversationPipeline
 
-# Configure logging
+
 logging.basicConfig(
     level=logging.DEBUG,
     format='%(asctime)s - %(levelname)s - %(message)s'
@@ -39,11 +39,11 @@ class FullConversationDemo:
         """Start the demo"""
         self.print_header()
 
-        # Check prerequisites
+
         if not self._check_prerequisites():
             return False
 
-        # Set up callbacks for visual feedback
+
         self.pipeline.set_callbacks(
             on_listening=self.on_listening,
             on_transcribed=self.on_transcribed,
@@ -53,7 +53,7 @@ class FullConversationDemo:
             on_complete=self.on_complete
         )
 
-        # Start pipeline
+
         print("\n🚀 Starting full conversation pipeline...\n")
         self.pipeline.start()
 
@@ -81,17 +81,17 @@ class FullConversationDemo:
 
         checks = []
 
-        # Check microphone
+
         print("   🎤 Testing microphone...")
         mic_ok = self.pipeline.voice_input.test_microphone()
         checks.append(("Microphone", mic_ok))
 
-        # Check Ollama
+
         print("   🤖 Testing Ollama...")
         llm_ok = self.pipeline.conversation_manager.llm.is_available
         checks.append(("Ollama LLM", llm_ok))
 
-        # Check TTS
+
         print("   🔊 Testing TTS...")
         try:
             self.pipeline.tts.speak("Test", wait=False)
@@ -100,7 +100,7 @@ class FullConversationDemo:
             tts_ok = False
         checks.append(("Text-to-Speech", tts_ok))
 
-        # Print results
+
         print("\n   Results:")
         all_ok = True
         for name, ok in checks:
@@ -229,7 +229,7 @@ class FullConversationDemo:
         print(f"   Emotion: {conv_stats['current_emotion']}")
         print(f"   Messages: {conv_stats['message_count']}")
 
-        # Show conversation log
+
         if self.conversation_log:
             print(f"\n📜 Conversation Log:")
             for i, entry in enumerate(self.conversation_log, 1):
@@ -249,7 +249,7 @@ class FullConversationDemo:
             return 1
 
         try:
-            # Keep running until interrupted
+
             while True:
                 time.sleep(0.1)
 
@@ -269,7 +269,7 @@ def main():
     print("🤖 FULL CONVERSATION DEMO - Voice-to-Voice AI")
     print("=" * 80)
 
-    # Load configuration
+
     config_path = Path(__file__).parent.parent / 'config' / 'settings.yaml'
 
     if not config_path.exists():
@@ -285,7 +285,7 @@ def main():
         print(f"❌ Failed to load config: {e}")
         return 1
 
-    # Create and run demo
+
     demo = FullConversationDemo(config)
     return demo.run()
 

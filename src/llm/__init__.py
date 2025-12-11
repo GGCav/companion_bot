@@ -16,18 +16,11 @@ from .conversation_manager import ConversationManager
 from .conversation_pipeline import ConversationPipeline
 
 __all__ = [
-    # Voice Input
     'STTEngine',
     'RealtimeSTT',
     'VoicePipeline',
-
-    # LLM
     'OllamaClient',
-
-    # Voice Output
     'TTSEngine',
-
-    # Conversation
     'ConversationManager',
     'ConversationPipeline',
 ]

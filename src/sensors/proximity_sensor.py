@@ -27,7 +27,6 @@ class ProximitySensor:
         self.max_distance = self.ultrasonic_config['max_distance']
         self.threshold = self.ultrasonic_config['detection_threshold']
 
-        # Setup pins
         GPIO.setup(self.trigger_pin, GPIO.OUT)
         GPIO.setup(self.echo_pin, GPIO.IN)
 
@@ -40,16 +39,14 @@ class ProximitySensor:
         Returns:
             Distance in centimeters
         """
-        # Send trigger pulse
         GPIO.output(self.trigger_pin, True)
         time.sleep(0.00001)
         GPIO.output(self.trigger_pin, False)
 
-        # Measure echo time
         pulse_start = time.time()
         pulse_end = time.time()
 
-        timeout = time.time() + 0.1  # 100ms timeout
+        timeout = time.time() + 0.1
 
         while GPIO.input(self.echo_pin) == 0 and time.time() < timeout:
             pulse_start = time.time()
@@ -58,7 +55,7 @@ class ProximitySensor:
             pulse_end = time.time()
 
         pulse_duration = pulse_end - pulse_start
-        distance = (pulse_duration * 34300) / 2  # Speed of sound = 343 m/s
+        distance = (pulse_duration * 34300) / 2
 
         if distance > self.max_distance:
             distance = self.max_distance

@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Iterator
 from collections import deque
 
-# Add parent directory to path
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from llm.ollama_client import OllamaClient
@@ -41,11 +41,11 @@ class StreamingEmotionParser:
 
     def reset(self):
         """Reset parser state"""
-        self.state = "ACCUMULATING"  # ACCUMULATING, TAG_FOUND, SEGMENT_READY
-        self.buffer = ""  # Accumulates tokens
-        self.current_emotion = None  # Current emotion tag
-        self.current_text = ""  # Text after emotion tag
-        self.last_emit_time = time.time()  # For timeout tracking
+        self.state = "ACCUMULATING"
+        self.buffer = ""
+        self.current_emotion = None
+        self.current_text = ""
+        self.last_emit_time = time.time()
         logger.debug("StreamingEmotionParser reset")
 
     def add_token(self, token: str) -> List[Tuple[str, str]]:
@@ -61,19 +61,19 @@ class StreamingEmotionParser:
         segments = []
         self.buffer += token
 
-        # State: Looking for emotion tag
+
         if self.state == "ACCUMULATING":
-            # Check for complete emotion tag pattern: [word]
+
             tag_match = re.search(r'\[(\w+)\]', self.buffer)
             if tag_match:
                 emotion = tag_match.group(1).lower()
 
-                # Validate emotion
+
                 if emotion in self.valid_emotions:
                     self.current_emotion = emotion
                     self.state = "TAG_FOUND"
 
-                    # Extract text after tag
+
                     text_after_tag = self.buffer[tag_match.end():].lstrip()
                     self.current_text = text_after_tag
                     self.buffer = ""
@@ -81,7 +81,7 @@ class StreamingEmotionParser:
 
                     logger.debug(f"Emotion tag found: [{emotion}]")
                 else:
-                    # Invalid emotion, use default and keep text
+
                     logger.warning(f"Invalid emotion '{emotion}', using 'happy'")
                     self.current_emotion = 'happy'
                     self.state = "TAG_FOUND"
@@ -90,19 +90,19 @@ class StreamingEmotionParser:
                     self.buffer = ""
                     self.last_emit_time = time.time()
 
-        # State: Accumulating text after tag
+
         elif self.state == "TAG_FOUND":
             self.current_text += token
 
-            # Check if segment is ready to emit
+
             if self._is_segment_boundary():
-                # Emit segment
+
                 segment_text = self._prepare_segment_text()
                 if segment_text:
                     segments.append((self.current_emotion, segment_text))
                     logger.debug(f"Segment ready: ({self.current_emotion}) {segment_text[:30]}...")
 
-                # Reset to look for next emotion tag
+
                 self.state = "ACCUMULATING"
                 self.buffer = ""
                 self.current_text = ""
@@ -118,29 +118,29 @@ class StreamingEmotionParser:
         Returns:
             True if segment is ready
         """
-        # Check for sentence boundary (. ! ? followed by space or end)
+
         if re.search(r'[.!?]\s*$', self.current_text):
             return True
 
-        # Check for timeout (force emit if stuck for too long)
+
         time_since_last_emit = time.time() - self.last_emit_time
         if time_since_last_emit > self.segment_timeout and len(self.current_text) >= self.min_segment_length:
             logger.debug(f"Segment timeout reached ({time_since_last_emit:.1f}s), forcing emit")
             return True
 
-        # Check if next emotion tag is starting (look for [ in recent text)
-        # If we see a '[' near the end, might be start of new tag
+
+
         if '[' in self.current_text:
-            # Split by '[' and check if the last part is very short (< 3 chars)
-            # This suggests a new tag is starting
+
+
             parts = self.current_text.split('[')
             if len(parts) > 1 and len(parts[-1]) < 3:
-                # Likely start of new tag, emit current segment
-                # Remove the '[' and partial tag from current text
+
+
                 self.current_text = '['.join(parts[:-1])
                 if len(self.current_text) >= self.min_segment_length:
                     logger.debug("New emotion tag detected, emitting previous segment")
-                    # Save the partial tag for next iteration
+
                     self.buffer = '[' + parts[-1]
                     return True
 
@@ -155,7 +155,7 @@ class StreamingEmotionParser:
         """
         text = self.current_text.strip()
 
-        # Remove any trailing '[' if present (start of next tag)
+
         if text.endswith('['):
             text = text[:-1].strip()
 
@@ -168,16 +168,16 @@ class StreamingEmotionParser:
         Returns:
             (emotion, text) tuple if content available, None otherwise
         """
-        # Check if we have text waiting in TAG_FOUND state
+
         if self.state == "TAG_FOUND" and self.current_text.strip():
             emotion = self.current_emotion or 'happy'
             text = self._prepare_segment_text()
             logger.debug(f"Flushing final segment: ({emotion}) {text[:30]}...")
             return (emotion, text)
 
-        # Check if we have text in buffer (ACCUMULATING state)
+
         elif self.buffer.strip():
-            # No emotion tag found, use default
+
             logger.debug(f"Flushing buffer with default emotion: {self.buffer[:30]}...")
             return ('happy', self.buffer.strip())
 
@@ -210,33 +210,33 @@ class ConversationManager:
         self.user_memory = user_memory
         self.conversation_history_db = conversation_history
 
-        # Initialize LLM client
+
         self.llm = OllamaClient(config)
 
-        # Conversation context settings
+
         self.context_window = config.get('memory', {}).get('conversation', {}).get('context_window', 10)
         self.max_history = config.get('memory', {}).get('conversation', {}).get('max_history', 50)
 
-        # Conversation history (in-memory)
+
         self.conversation_history: deque = deque(maxlen=self.max_history)
         self.current_context: deque = deque(maxlen=self.context_window)
 
-        # Session info
+
         self.current_user_id: Optional[int] = None
         self.current_user_name: str = "friend"
         self.conversation_start_time = time.time()
         self.message_count = 0
         self.session_id = self._generate_session_id()
 
-        # Response filtering
-        self.max_response_length = 240  # Characters
+
+        self.max_response_length = 240
         self.response_filters = [
             self._ensure_short,
             self._ensure_pet_like,
             self._add_expressiveness
         ]
 
-        # Valid emotions (from settings.yaml)
+
         self.valid_emotions = {
             'happy', 'sad', 'excited', 'curious', 'sleepy',
             'lonely', 'playful', 'scared', 'angry', 'loving',
@@ -264,15 +264,15 @@ class ConversationManager:
             logger.warning("Empty user input")
             return "...", {'error': 'empty_input'}
 
-        # Update user info
+
         if user_id is not None:
             self.current_user_id = user_id
             self._update_user_name()
 
-        # Generate response from LLM (LLM will choose emotion)
+
         start_time = time.time()
 
-        # Format conversation context for LLM
+
         formatted_context = self._format_context_for_llm()
 
         result = self.llm.generate_with_personality(
@@ -283,23 +283,23 @@ class ConversationManager:
 
         response_time = time.time() - start_time
 
-        # Extract response and parse ALL emotion segments
+
         raw_response = result.get('response', '')
         emotion_segments = self._parse_emotion_segments(raw_response)
 
-        # Get final emotion (last in sequence)
+
         final_emotion = emotion_segments[-1][0] if emotion_segments else 'happy'
 
-        # Filter each segment's text, then recombine with emotions
+
         filtered_segments = []
         for emotion, text in emotion_segments:
             filtered_text = self._filter_response(text)
             filtered_segments.append((emotion, filtered_text))
 
-        # Combined filtered text for history
+
         filtered_response = ' '.join(text for _, text in filtered_segments)
 
-        # Update conversation history (save to database with metadata)
+
         self._add_to_history('user', user_text)
         self._add_to_history(
             'assistant',
@@ -308,37 +308,37 @@ class ConversationManager:
             tokens=result.get('tokens', 0)
         )
 
-        # Update context window
+
         self._update_context(user_text, filtered_response)
 
-        # Update emotion engine with emotion sequence
+
         if self.emotion_engine:
             try:
-                # Extract just the emotions in sequence
+
                 emotion_sequence = [emotion for emotion, _ in emotion_segments]
 
-                # Use process_emotion_sequence if available (new method)
+
                 if hasattr(self.emotion_engine, 'process_emotion_sequence'):
                     self.emotion_engine.process_emotion_sequence(emotion_sequence)
                 else:
-                    # Fallback: use final emotion
+
                     self.emotion_engine.set_emotion_from_llm(final_emotion)
             except Exception as e:
                 logger.warning(f"Error updating emotion engine: {e}")
-                # Ultimate fallback
+
                 if hasattr(self.emotion_engine, 'on_voice_interaction'):
                     self.emotion_engine.on_voice_interaction()
 
-        # Update stats
+
         self.message_count += 1
 
-        # Get current energy for metadata (emotion is now from LLM)
+
         current_energy = self._get_current_energy()
 
-        # Build metadata
+
         metadata = {
-            'emotion': final_emotion,  # Final emotion from LLM sequence
-            'emotion_segments': filtered_segments,  # All emotion segments for TTS
+            'emotion': final_emotion,
+            'emotion_segments': filtered_segments,
             'energy': current_energy,
             'response_time': response_time,
             'tokens': result.get('tokens', 0),
@@ -376,17 +376,17 @@ class ConversationManager:
             yield ('happy', '...')
             return
 
-        # Update user info
+
         if user_id is not None:
             self.current_user_id = user_id
             self._update_user_name()
 
-        # Build system prompt for personality
+
         system_prompt = self.llm.personality_template.format(
             user_name=self.current_user_name
         )
 
-        # Initialize streaming parser
+
         streaming_config = self.config.get('llm', {}).get('streaming', {})
         segment_timeout = streaming_config.get('segment_timeout', 2.0)
         min_segment_length = streaming_config.get('min_segment_length', 5)
@@ -399,22 +399,22 @@ class ConversationManager:
 
         logger.info("Starting streaming generation...")
 
-        # Format conversation context for LLM
+
         formatted_context = self._format_context_for_llm()
 
-        # Track segments for history and emotion engine
+
         all_segments = []
         segment_count = 0
 
         try:
-            # Stream tokens from LLM
+
             for token in self.llm.stream_generate(user_text, system_prompt=system_prompt, context=formatted_context):
-                # Parse token and check for complete segments
+
                 segments = parser.add_token(token)
 
-                # Yield any ready segments
+
                 for emotion, text in segments:
-                    # Filter the text
+
                     filtered_text = self._filter_response(text)
 
                     if filtered_text:
@@ -423,7 +423,7 @@ class ConversationManager:
                         logger.info(f"Streaming segment {segment_count}: ({emotion}) {filtered_text[:40]}...")
                         yield (emotion, filtered_text)
 
-            # Flush any remaining content
+
             final_segment = parser.flush()
             if final_segment:
                 emotion, text = final_segment
@@ -435,35 +435,35 @@ class ConversationManager:
                     logger.info(f"Streaming final segment: ({emotion}) {filtered_text[:40]}...")
                     yield (emotion, filtered_text)
 
-            # Update conversation history with complete response
+
             combined_text = ' '.join(text for _, text in all_segments)
             self._add_to_history('user', user_text)
             self._add_to_history('assistant', combined_text)
 
-            # Update context window
+
             self._update_context(user_text, combined_text)
 
-            # Update emotion engine with emotion sequence
+
             if self.emotion_engine and all_segments:
                 try:
                     emotion_sequence = [emotion for emotion, _ in all_segments]
                     if hasattr(self.emotion_engine, 'process_emotion_sequence'):
                         self.emotion_engine.process_emotion_sequence(emotion_sequence)
                     else:
-                        # Fallback: use final emotion
+
                         final_emotion = all_segments[-1][0]
                         self.emotion_engine.set_emotion_from_llm(final_emotion)
                 except Exception as e:
                     logger.warning(f"Error updating emotion engine: {e}")
 
-            # Update stats
+
             self.message_count += 1
 
             logger.info(f"Streaming complete: {segment_count} segments generated")
 
         except Exception as e:
             logger.error(f"Error in streaming generation: {e}", exc_info=True)
-            # Yield a fallback response
+
             yield ('happy', "Sorry, I had trouble with that.")
 
     def _build_context(self) -> List[str]:
@@ -504,7 +504,7 @@ class ConversationManager:
             emotion: Optional emotion (for assistant messages)
             tokens: Optional token count (for assistant messages)
         """
-        # Add to in-memory history
+
         self.conversation_history.append({
             'role': role,
             'message': message,
@@ -513,7 +513,7 @@ class ConversationManager:
             'timestamp': time.time()
         })
 
-        # Save to database if available
+
         if self.conversation_history_db:
             try:
                 self.conversation_history_db.save_message(
@@ -540,7 +540,7 @@ class ConversationManager:
             except Exception as e:
                 logger.error(f"Error getting emotion: {e}")
 
-        return "happy"  # Default
+        return "happy"
 
     def _get_current_energy(self) -> float:
         """
@@ -555,7 +555,7 @@ class ConversationManager:
             except Exception as e:
                 logger.error(f"Error getting energy: {e}")
 
-        return 0.7  # Default
+        return 0.7
 
     def _format_context_for_llm(self) -> Optional[List[str]]:
         """
@@ -567,7 +567,7 @@ class ConversationManager:
         if not self.current_context:
             return None
 
-        # Format each exchange as "User: ...\nAssistant: ..."
+
         formatted = []
         for role, message in self.current_context:
             if role == 'user':
@@ -617,13 +617,13 @@ class ConversationManager:
         """
         response = response.strip()
 
-        # Pattern to find all [emotion] tags and capture text between them
-        # Matches: [word] followed by text until next [word] or end
+
+
         pattern = r'\[(\w+)\]\s*([^\[]+)'
         matches = re.findall(pattern, response)
 
         if not matches:
-            # No emotion tags found - return entire response with default emotion
+
             logger.warning("No emotion tags found in response, using default 'happy'")
             return [('happy', response)]
 
@@ -632,11 +632,11 @@ class ConversationManager:
             emotion = emotion_raw.lower().strip()
             text = text.strip()
 
-            # Skip empty segments
+
             if not text:
                 continue
 
-            # Validate emotion
+
             if emotion not in self.valid_emotions:
                 logger.warning(f"Invalid emotion '{emotion}', using 'happy' for this segment")
                 emotion = 'happy'
@@ -644,7 +644,7 @@ class ConversationManager:
             segments.append((emotion, text))
 
         if not segments:
-            # All segments were empty - fallback
+
             logger.warning("All emotion segments were empty, using default")
             return [('happy', response)]
 
@@ -667,10 +667,10 @@ class ConversationManager:
         if not segments:
             return 'happy', response
 
-        # Get first emotion
+
         first_emotion = segments[0][0]
 
-        # Combine all text segments (strip all emotion tags)
+
         combined_text = ' '.join(text for _, text in segments)
 
         return first_emotion, combined_text
@@ -706,10 +706,10 @@ class ConversationManager:
             Shortened response
         """
         if len(response) > self.max_response_length:
-            # Truncate at sentence boundary if possible
+
             sentences = response.split('. ')
             if sentences:
-                # Take first 1-2 sentences
+
                 short = '. '.join(sentences[:2])
                 if not short.endswith('.'):
                     short += '.'
@@ -729,7 +729,7 @@ class ConversationManager:
         Returns:
             Pet-like response
         """
-        # Remove overly formal language
+
         replacements = {
             'I apologize': 'Sorry!',
             'I understand': 'I get it!',
@@ -754,8 +754,8 @@ class ConversationManager:
         Returns:
             More expressive response
         """
-        # Could add emotive actions based on emotion
-        # For now, just return as-is
+
+
         return response
 
     def get_conversation_summary(self) -> str:
@@ -833,19 +833,19 @@ class ConversationManager:
 
 
 if __name__ == "__main__":
-    # Test conversation manager
+
     logging.basicConfig(level=logging.INFO)
 
     import yaml
 
-    # Load config
+
     config_path = Path(__file__).parent.parent.parent / 'config' / 'settings.yaml'
 
     if config_path.exists():
         with open(config_path) as f:
             config = yaml.safe_load(f)
     else:
-        # Mock config
+
         config = {
             'llm': {
                 'provider': 'ollama',
@@ -899,14 +899,14 @@ REMEMBER: Always start with [emotion] in brackets, then your message.''',
     print("Conversation Manager Test")
     print("=" * 60)
 
-    # Initialize manager
+
     print("\nInitializing conversation manager...")
     manager = ConversationManager(config)
 
     if manager.llm.is_available:
         print("✅ LLM available!\n")
 
-        # Test conversation
+
         test_messages = [
             "Hello! What's your name?",
             "How are you feeling today?",
@@ -922,11 +922,11 @@ REMEMBER: Always start with [emotion] in brackets, then your message.''',
             print(f"    Bot ({metadata['emotion']}): {response}")
             print(f"    [Time: {metadata['response_time']:.2f}s, Tokens: {metadata['tokens']}]")
 
-        # Show summary
+
         print("\n" + "=" * 60)
         print(manager.get_conversation_summary())
 
-        # Show context
+
         print("\nCurrent context:")
         for role, msg in manager.current_context:
             print(f"  {role}: {msg[:50]}...")

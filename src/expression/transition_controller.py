@@ -21,10 +21,10 @@ class TransitionController:
         self.is_active = False
         self.from_emotion: Optional[str] = None
         self.to_emotion: Optional[str] = None
-        self.duration: float = 0.5  # Default transition duration
+        self.duration: float = 0.5
         self.start_time: float = 0.0
         self.elapsed_time: float = 0.0
-        self.alpha: float = 0.0  # Current blend factor (0.0 to 1.0)
+        self.alpha: float = 0.0
 
     def start_transition(self, from_emotion: str, to_emotion: str, duration: float = 0.5):
         """
@@ -37,7 +37,7 @@ class TransitionController:
         """
         self.from_emotion = from_emotion
         self.to_emotion = to_emotion
-        self.duration = max(0.1, duration)  # Minimum 0.1s duration
+        self.duration = max(0.1, duration)
         self.start_time = time.time()
         self.elapsed_time = 0.0
         self.alpha = 0.0
@@ -61,13 +61,13 @@ class TransitionController:
 
         self.elapsed_time += delta_time
 
-        # Linear interpolation
+
         self.alpha = min(1.0, self.elapsed_time / self.duration)
 
-        # Check if transition complete
+
         if self.alpha >= 1.0:
             self.is_active = False
-            self.from_emotion = self.to_emotion  # Update current emotion
+            self.from_emotion = self.to_emotion
             logger.debug(f"Transition complete: now showing {self.to_emotion}")
 
         return (self.from_emotion, self.to_emotion, self.alpha)
@@ -97,7 +97,7 @@ class TransitionController:
             Current emotion name
         """
         if self.is_active and self.alpha >= 0.5:
-            # Past halfway point - consider target emotion as current
+
             return self.to_emotion or 'happy'
         else:
             return self.from_emotion or 'happy'

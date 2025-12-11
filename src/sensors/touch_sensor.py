@@ -20,16 +20,13 @@ class TouchSensor:
         self.config = config
         self.touch_config = config['sensors']['touch']
 
-        # Setup GPIO
         GPIO.setmode(GPIO.BCM)
         GPIO.setwarnings(False)
 
-        # Touch sensor pins
         self.pins = self.touch_config['pins']
         self.debounce_time = self.touch_config['debounce_time']
         self.long_press_duration = self.touch_config['long_press_duration']
 
-        # State tracking
         self.touch_states: Dict[str, bool] = {}
         self.touch_start_times: Dict[str, float] = {}
         self.callbacks: Dict[str, list] = {
@@ -38,13 +35,11 @@ class TouchSensor:
             'long_press': []
         }
 
-        # Initialize pins
         for location, pin in self.pins.items():
             GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
             self.touch_states[location] = False
             self.touch_start_times[location] = 0
 
-        # Monitoring thread
         self.is_monitoring = False
         self.monitor_thread: Optional[threading.Thread] = None
 
@@ -83,19 +78,18 @@ class TouchSensor:
         current_state = GPIO.input(pin)
         previous_state = self.touch_states[location]
 
-        # State changed
         if current_state != previous_state:
-            time.sleep(self.debounce_time)  # Debounce
-            current_state = GPIO.input(pin)  # Re-read after debounce
+            time.sleep(self.debounce_time)
+            current_state = GPIO.input(pin)
 
             if current_state != previous_state:
                 self.touch_states[location] = current_state
 
-                if current_state:  # Pressed
+                if current_state:
                     self.touch_start_times[location] = time.time()
                     self._trigger_callbacks('press', location)
                     logger.debug(f"Touch pressed: {location}")
-                else:  # Released
+                else:
                     press_duration = time.time() - self.touch_start_times[location]
                     if press_duration >= self.long_press_duration:
                         self._trigger_callbacks('long_press', location)

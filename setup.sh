@@ -1,14 +1,11 @@
 #!/bin/bash
-# Companion Bot Setup Script
-# Automated installation for Raspberry Pi 4
 
-set -e  # Exit on error
+set -e
 
 echo "======================================"
 echo "Companion Bot Setup"
 echo "======================================"
 
-# Check if running on Raspberry Pi
 if [[ ! -f /proc/cpuinfo ]] || ! grep -q "Raspberry Pi" /proc/cpuinfo; then
     echo "Warning: This script is designed for Raspberry Pi"
     read -p "Continue anyway? (y/n) " -n 1 -r
@@ -18,12 +15,10 @@ if [[ ! -f /proc/cpuinfo ]] || ! grep -q "Raspberry Pi" /proc/cpuinfo; then
     fi
 fi
 
-# Update system
 echo "Updating system packages..."
 sudo apt-get update
 sudo apt-get upgrade -y
 
-# Install system dependencies
 echo "Installing system dependencies..."
 sudo apt-get install -y \
     python3-pip \
@@ -50,12 +45,10 @@ sudo apt-get install -y \
     espeak \
     libespeak-dev
 
-# Enable I2C and Camera
 echo "Enabling I2C and Camera interfaces..."
 sudo raspi-config nonint do_i2c 0
 sudo raspi-config nonint do_camera 0
 
-# Install pigpio daemon for servo control
 echo "Installing pigpio..."
 wget https://github.com/joan2937/pigpio/archive/master.zip
 unzip master.zip
@@ -65,46 +58,35 @@ sudo make install
 cd ..
 rm -rf pigpio-master master.zip
 
-# Enable and start pigpio daemon
 sudo systemctl enable pigpiod
 sudo systemctl start pigpiod
 
-# Create virtual environment
 echo "Creating Python virtual environment..."
 python3 -m venv venv
 
-# Activate virtual environment
 source venv/bin/activate
 
-# Upgrade pip
 pip install --upgrade pip setuptools wheel
 
-# Install Python dependencies
 echo "Installing Python packages..."
 pip install -r requirements.txt
 
-# Install Ollama
 echo "Installing Ollama..."
 curl -fsSL https://ollama.com/install.sh | sh
 
-# Pull lightweight model for Raspberry Pi
 echo "Downloading Ollama model..."
 ollama pull llama3.2:3b
 
-# Download Whisper model
 echo "Downloading Whisper model..."
 python3 -c "import whisper; whisper.load_model('base')"
 
-# Create data directories
 echo "Creating data directories..."
 mkdir -p data/{users,conversations,logs}
 mkdir -p assets/{animations,sounds}
 
-# Set permissions
 chmod +x main.py
 chmod 755 scripts/*.py 2>/dev/null || true
 
-# Create systemd service (optional)
 echo "Creating systemd service..."
 sudo tee /etc/systemd/system/companion-bot.service > /dev/null <<EOF
 [Unit]
@@ -123,7 +105,6 @@ RestartSec=10
 WantedBy=multi-user.target
 EOF
 
-# Reload systemd
 sudo systemctl daemon-reload
 
 echo ""
