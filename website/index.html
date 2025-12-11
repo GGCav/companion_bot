@@ -109,6 +109,9 @@
                 For reliability and performance, we use WebRTC VAD + adaptive VAD to trim silence and stream STT/LLM/TTS with callbacks. The robot also has GPIO exit and watchdog in display loop.
                 For Memory and History, we use an SQLite-backed conversation log and user memory to maintain context continuity.
               </p>
+              <p style="text-align: left;padding: 0px 30px;">
+                Key challenges included iterating LLM choices (llama3.2:3b → tinyllama:latest → llama3.2:1b → qwen2.5:0.5b) to fit latency and RAM on the Pi, switching from Whisper to faster-whisper for STT speed, resolving WM8960 audio card connection issues and package conflicts with PulseAudio, and fine-tuning pipelines and transitions for smoother responsiveness.
+              </p>
       </div>
 
     <hr id='drawings'>
@@ -148,11 +151,29 @@
 
       <div style="text-align:center;">
               <h2>Result</h2>
+            <p style="text-align: left;padding: 0px 30px;">
+              Performance on the Raspberry Pi 4 shows fully local operation with average end-to-end latency around 28&nbsp;s (p95 ~38&nbsp;s) and perceived “first audio” near 5.5&nbsp;s; STT and small Ollama LLMs are the main contributors, while RAM stays modest (~560&nbsp;MB main, ~150&nbsp;MB Ollama). Further gains will come from smaller STT/LLM models, tighter VAD, and shorter responses to reduce TTS time.
+            </p>
+      </div>
+
+    <hr id='future'>
+
+      <div style="text-align:center;">
+              <h2>Future Work</h2>
               <p style="text-align: left;padding: 0px 30px;">
-              Overall, the project was a success. 
-              The companion robot was able to respond to voice commands and touch interactions in real time, providing a friendly and engaging experience for users.
-              In the future, we plan to install a camera to apply computer vision to track people movements like creating eye contract. 
-              We also want to toggle an advanced mode by using cloud api for better performance and memory storage.
+              Next steps focus on adding a camera-driven computer vision layer to track people and maintain eye contact, plus an optional advanced mode that can offload heavier LLM/TTS workloads to cloud APIs for better performance and roomier long-term memory, while keeping the local Pi-first path as the default.
+              </p>
+      </div>
+
+    <hr id='conclusion'>
+
+      <div style="text-align:center;">
+              <h2>Conclusion</h2>
+              <p style="text-align: left;padding: 0px 30px;">
+              Companion Bot delivers responsive, fully local interactions on the Raspberry Pi, blending speech, touch, and expressive visuals into a cohesive experience. The modular pipeline and configuration make it a practical platform for future sensing and personality upgrades.
+            </p>
+            <p style="text-align: left;padding: 0px 30px;">
+              What worked well: we strictly followed the implementation plan and kept the system modularized, which simplified integration and tuning. What did not work as well: keeping up with weekly progress reports—these slipped and should be tracked more diligently next time.
             </p>
       </div>
 
@@ -184,12 +205,14 @@
       <div style="font-size:18px">
           <h2>Parts List</h2>
           <ul>
-              <li>USB Microphone $2</li>
-              <li>Mini Breadboard $2</li>
-              <a href="https://www.adafruit.com/product/1463"><li>NeoPixel Ring - $9.95</li></a>
-              <li>LEDs, Resistors, Wires, Raspberry Pi, Tape, and Cardboard - Provided in lab</li>
+              <li>Raspberry Pi 4 (core compute)</li>
+              <li>piTFT display (touch + framebuffer)</li>
+              <li>Mini microphone (USB/I2S) — $5</li>
+              <li>Speaker with wm8960 soundcard — ~$20</li>
+              <li>256GB USB drive — ~$20</li>
+              <li>Mini Breadboard</li>
           </ul>
-          <h3>Total: $?</h3>
+          <h3>Total: ~$45</h3>
       </div>
       <hr>
       <div style="font-size:18px">
@@ -201,20 +224,11 @@
 
     <hr>
 
-      <div class="row">
-              <h2>Code Appendix</h2>
-              <pre><code>
-// Hello World.c
-int main(){
-  printf("Hello World.\n");
-}
-              </code></pre>
-      </div>
-
-    </div>
-
-
-
+    <hr> <h2>Code Appendix</h2>
+      <p style="text-align:left;padding: 0px 30px;">
+        Full source is available at <a href="https://github.com/GGCav/companion_bot">https://github.com/GGCav/companion_bot</a>.
+      </p>
+    <hr>
 
     
     
