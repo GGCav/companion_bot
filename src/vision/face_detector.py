@@ -1,6 +1,7 @@
 """
 Face Detection using MediaPipe and OpenCV
 Optimized for Pi Camera v2
+Pending implementation
 """
 
 import cv2

@@ -1,6 +1,7 @@
 """
 Proximity and Motion Sensors
 Handles ultrasonic and PIR sensors
+Pending implementation
 """
 
 import RPi.GPIO as GPIO

@@ -1,6 +1,7 @@
 """
 Touch Sensor Handler
 Manages capacitive touch sensors with debouncing
+Pending implementation
 """
 
 import RPi.GPIO as GPIO

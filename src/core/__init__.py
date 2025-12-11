@@ -1,6 +1,7 @@
 """
 Core Module
 Main orchestration and control loop
+Pending implementation
 """
 
 from .companion_bot import CompanionBot

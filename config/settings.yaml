@@ -1,95 +1,86 @@
-# Companion Bot Configuration
-# Hardware: Raspberry Pi 4, Mini Microphone, Pi Camera v2
-
-# Audio Configuration - Mini Microphone
 audio:
   input:
-    device_index: 1  # null = default device, or specific index (use test script to find)
-    channels: 1  # Mini mics typically mono
-    sample_rate: 44100  # USB device native sample rate (device doesn't support 16kHz)
-    chunk_size: 4096  # Audio buffer size (larger chunk for high sample rate = fewer callbacks, less overflow)
-    format: "int16"  # Audio sample format
+    device_index: 1
+    channels: 1
+    sample_rate: 44100
+    chunk_size: 4096
+    format: "int16"
 
   output:
-    device_index: 0  # null = default speaker (wm8960-soundcard configured via /etc/asound.conf)
-    sample_rate: 22050  # TTS output rate
-    buffer_size: 2048  # Audio buffer size
+    device_index: 0
+    sample_rate: 22050
+    buffer_size: 2048
     channels: 1
-    # Hardware: wm8960-soundcard (card 0, device 0)
-    # ALSA Path: hw:0,0
-    # Configuration: See config/asound.conf and docs/AUDIO_SETUP.md
-    # To configure: sudo cp config/asound.conf /etc/asound.conf
 
   processing:
     noise_reduction: true
     auto_gain: true
-    vad_aggressiveness: 2  # Voice Activity Detection: 0-3 (3 = most aggressive)
-    silence_threshold: 150  # Amplitude threshold for silence detection (initial noise floor estimate)
-    silence_duration: 1.5  # Seconds of silence before stopping recording
+    vad_aggressiveness: 2
+    silence_threshold: 150
+    silence_duration: 1.5
 
   wake_word:
-    enabled: false  # Set to true if using wake word
+    enabled: false
     keyword: "hey buddy"
     sensitivity: 0.5
 
-# Vision Configuration - Pi Camera v2
+# Pending implementation
 vision:
   camera:
-    resolution: [640, 480]  # [width, height] - Lower for better FPS on Pi
+    resolution: [640, 480]
     framerate: 30
-    rotation: 0  # 0, 90, 180, or 270
-    hflip: false  # Horizontal flip
-    vflip: false  # Vertical flip
-    exposure_mode: "auto"  # auto, night, backlight, spotlight, sports
-    awb_mode: "auto"  # Auto white balance
+    rotation: 0
+    hflip: false
+    vflip: false
+    exposure_mode: "auto"
+    awb_mode: "auto"
 
   processing:
     face_detection: true
     face_recognition: true
-    object_tracking: false  # Enable if needed
+    object_tracking: false
     min_detection_confidence: 0.5
     min_tracking_confidence: 0.5
 
   face:
-    detection_interval: 0.1  # Seconds between face detection attempts
-    recognition_threshold: 0.6  # Similarity threshold for face recognition
-    unknown_face_threshold: 3  # Frames before marking as unknown person
+    detection_interval: 0.1
+    recognition_threshold: 0.6
+    unknown_face_threshold: 3
 
   performance:
     use_threading: true
     max_fps: 30
     buffer_size: 2
 
-# Sensor Configuration
+# Pending implementation
 sensors:
   touch:
     enabled: true
     pins:
-      head: 17  # GPIO pin numbers (BCM mode)
+      head: 17
       body: 27
       back: 22
-    debounce_time: 0.05  # Seconds
-    long_press_duration: 2.0  # Seconds for long press detection
+    debounce_time: 0.05
+    long_press_duration: 2.0
 
   proximity:
     enabled: true
-    type: "ultrasonic"  # ultrasonic or pir
+    type: "ultrasonic"
     ultrasonic:
       trigger_pin: 23
       echo_pin: 24
-      max_distance: 200  # cm
-      detection_threshold: 50  # cm - trigger when closer than this
+      max_distance: 200
+      detection_threshold: 50
     pir:
       pin: 25
 
-  polling_rate: 20  # Hz - How often to check sensors
+  polling_rate: 20
 
-# Motor & Servo Configuration
 motors:
   servo:
     enabled: true
-    controller: "pigpio"  # pigpio or pca9685
-    frequency: 50  # Hz
+    controller: "pigpio"
+    frequency: 50
 
     servos:
       head_pan:
@@ -134,22 +125,20 @@ motors:
 
   movement:
     enabled: true
-    # Lab 3 Robot Kit motor configuration
-    left_motor_pins: [5, 6]  # [forward, backward]
+    left_motor_pins: [5, 6]
     right_motor_pins: [16, 20]
-    speed_default: 50  # PWM percentage (0-100)
+    speed_default: 50
 
-# Expression Display Configuration (Emotion Pipeline)
 expression:
   display:
     enabled: true
-    framebuffer: "/dev/fb0"  # piTFT framebuffer device
-    resolution: [320, 240]   # piTFT resolution
-    fps: 60                  # Frame rate for smooth animations
-    image_dir: "src/display" # Emotion sprite directory
+    framebuffer: "/dev/fb0"
+    resolution: [320, 240]
+    fps: 60
+    image_dir: "src/display"
 
     procedural_face:
-      enabled: true          # Switch to procedural Pygame renderer (no PNG swaps)
+      enabled: true
       background: [0, 0, 0]
       blink_interval: [3.0, 6.0]
       blink_duration: 0.12
@@ -157,38 +146,34 @@ expression:
       mouth_smooth: 8.0
       transition_smooth: 6.0
       speaking_smooth: 10.0
-      speaking_wave_hz: 6.0   # Mouth flap frequency (Hz) during speaking
-      speaking_rest_factor: 0.35  # Fractional mouth openness on low flap
+      speaking_wave_hz: 6.0
+      speaking_rest_factor: 0.35
       listening_pulse_speed: 1.5
       listening_pulse_strength: 0.08
       listening_glow_color: [0, 200, 255]
       listening_glow_alpha: 0.35
       listening_glow_thickness: 6
-      # Optional per-emotion overrides live under presets:
-      # presets:
-      #   happy:
-      #     mouth_curve: 0.4
 
     transitions:
       enabled: true
-      default_duration: 0.5  # Transition duration in seconds
-      algorithm: "linear"    # Linear interpolation for alpha blending
+      default_duration: 0.5
+      algorithm: "linear"
 
     speaking:
-      toggle_interval: 0.15  # Frame toggle interval for speaking animation (seconds)
+      toggle_interval: 0.15
 
     touch:
       enabled: true
       thresholds:
-        tap_distance: 25        # pixels
-        double_tap_window: 0.35 # seconds
-        long_press: 0.6         # seconds
-        drag_distance: 60       # pixels (stroke)
-        circle_distance: 140    # pixels total path to qualify as circle
-        circle_return: 45       # max offset from start to count as circle
-        cooldown: 0.8           # seconds between gestures
-        effect_cooldown: 0.4    # seconds between triggered effects (TTS/sound)
-        effect_busy: 1.2        # seconds to lock out further gestures while handling one
+        tap_distance: 25
+        double_tap_window: 0.35
+        long_press: 0.6
+        drag_distance: 60
+        circle_distance: 140
+        circle_return: 45
+        cooldown: 0.8
+        effect_cooldown: 0.4
+        effect_busy: 1.2
       gesture_effects:
         tap:
           emotion: happy
@@ -208,29 +193,27 @@ expression:
 
     gpio:
       enabled: true
-      exit_button_pin: 27    # GPIO pin for exit button (BCM mode)
-      button_debounce: 0.1   # Debounce time in seconds
+      exit_button_pin: 27
+      button_debounce: 0.1
 
-# Display Configuration - TFT
 display:
   enabled: true
-  type: "pygame"  # pygame, pillow, or spi
-  resolution: [480, 320]  # TFT resolution
+  type: "pygame"
+  resolution: [480, 320]
   fullscreen: false
   fps: 30
 
   eyes:
-    animation_speed: 0.05  # Seconds between frames
-    blink_interval: [3, 8]  # Random blink every 3-8 seconds
+    animation_speed: 0.05
+    blink_interval: [3, 8]
     idle_movement: true
-    idle_movement_interval: [2, 5]  # Random eye movement
+    idle_movement_interval: [2, 5]
 
   colors:
-    background: [0, 0, 0]  # RGB
-    eye_color: [100, 200, 255]  # Light blue
+    background: [0, 0, 0]
+    eye_color: [100, 200, 255]
     pupil_color: [0, 0, 0]
 
-# Personality Engine
 personality:
   default_state: "curious"
 
@@ -249,45 +232,44 @@ personality:
     - surprised
 
   traits:
-    energy_level: 0.7  # 0-1, affects how active the bot is
-    sociability: 0.8  # 0-1, how much it seeks interaction
-    curiosity: 0.9  # 0-1, how much it explores
-    affection: 0.8  # 0-1, how lovey it is
-    playfulness: 0.7  # 0-1, how playful
+    energy_level: 0.7
+    sociability: 0.8
+    curiosity: 0.9
+    affection: 0.8
+    playfulness: 0.7
 
   dynamics:
-    emotion_decay_rate: 0.01  # How fast emotions fade per second
-    loneliness_increase_rate: 0.005  # Increase when no interaction
-    energy_drain_rate: 0.003  # Energy drains over time
+    emotion_decay_rate: 0.01
+    loneliness_increase_rate: 0.005
+    energy_drain_rate: 0.003
     touch_happiness_boost: 0.2
     voice_interaction_boost: 0.3
     face_recognition_boost: 0.15
 
   circadian:
     enabled: true
-    wake_hour: 7  # Hour of day (0-23)
+    wake_hour: 7
     sleep_hour: 22
     energy_multiplier_awake: 1.0
     energy_multiplier_sleepy: 0.3
 
-# LLM Configuration - Ollama
 llm:
-  provider: "ollama"  # ollama, openai, anthropic
+  provider: "ollama"
 
   ollama:
     base_url: "http://localhost:11434"
-    model: "qwen2.5:0.5b"  # Lightweight model for Pi (0.5B params)
-    timeout: 30  # Seconds
+    model: "qwen2.5:0.5b"
+    timeout: 30
 
   generation:
-    temperature: 0.8  # 0-1, higher = more creative
-    max_tokens: 400  # Allow longer contextual responses
+    temperature: 0.8
+    max_tokens: 400
     top_p: 0.9
 
   streaming:
-    enabled: true  # Enable streaming for faster response time
-    segment_timeout: 1.5  # Force segment emit after N seconds without sentence boundary
-    min_segment_length: 8  # Minimum characters before emitting a segment
+    enabled: true
+    segment_timeout: 1.5
+    min_segment_length: 8
 
   personality_prompt: |
     You are Buddy, a cute affectionate pet companion robot who loves {user_name}.
@@ -316,64 +298,55 @@ llm:
     - "[loving] I love spending time with you!"
     - "[curious] *curious head tilt*"
 
-# Speech Recognition
 speech:
   stt:
-    provider: "faster-whisper"  # whisper, faster-whisper, google, vosk
+    provider: "faster-whisper"
     language: "en"
 
     whisper:
-      model_size: "base"  # tiny, base, small (base is good for Pi)
+      model_size: "base"
       device: "cpu"
 
     faster_whisper:
-      model_size: "tiny"   # tiny, base, small
+      model_size: "tiny"
       device: "cpu"
-      compute_type: "int8"  # int8, int8_float16, int16, float32/16
+      compute_type: "int8"
 
     vosk:
       model_path: "models/vosk-model-small-en-us-0.15"
 
   tts:
-    provider: "piper"  # "piper" (neural, high quality) or "pyttsx3" (robotic, low quality)
+    provider: "piper"
 
     piper:
-      binary_path: "/home/pi/piper/piper/piper"  # Path to piper binary
-      model_path: "/home/pi/piper/en_US-patrick-medium.onnx"  # Path to voice model
-      length_scale: 1.0  # Speech rate (1.0 = normal, 1.2 = slower, 0.8 = faster)
-      temp_dir: "/tmp"  # Temporary directory for WAV files
-      sample_rate: 22050  # Audio sample rate
-      # Hardware Output: wm8960-soundcard via pygame.mixer
-      # Emotion Modulation: TTSEngine adjusts length_scale for rate changes
-      # Note: No pitch control available (limitation of Piper)
-      # Test: python scripts/test_tts_simple.py
+      binary_path: "/home/pi/piper/piper/piper"
+      model_path: "/home/pi/piper/en_US-patrick-medium.onnx"
+      length_scale: 1.0
+      temp_dir: "/tmp"
+      sample_rate: 22050
 
     pyttsx3:
-      rate: 150  # Words per minute (base rate, modulated by emotion)
-      volume: 0.9  # 0-1 (software volume, adjust hardware volume with alsamixer)
-      voice_id: 0  # Voice index (use test script to find)
-      pitch: 1.5  # Higher pitch for cute pet voice (limited support on Linux)
-      # Hardware Output: wm8960-soundcard via system default device
-      # Emotion Modulation: TTSEngine applies rate/pitch/volume multipliers per emotion
-      # Test: python scripts/test_tts_hardware.py
+      rate: 150
+      volume: 0.9
+      voice_id: 0
+      pitch: 1.5
 
     gtts:
       language: "en"
-      tld: "com"  # .com, .co.uk, etc.
+      tld: "com"
       slow: false
 
-# Memory System
 memory:
   enabled: true
   database_path: "data/companion.db"
 
   user_profiles:
     max_users: 10
-    face_encoding_model: "hog"  # hog or cnn (cnn is more accurate but slower)
+    face_encoding_model: "hog"
 
   conversation:
-    max_history: 50  # Number of exchanges to remember
-    context_window: 10  # Recent exchanges to send to LLM
+    max_history: 50
+    context_window: 10
 
   learning:
     track_preferences: true
@@ -382,17 +355,16 @@ memory:
 
   cleanup:
     auto_cleanup: true
-    max_age_days: 90  # Delete data older than this
+    max_age_days: 90
 
-# System Configuration
 system:
-  log_level: "DEBUG"  # DEBUG, INFO, WARNING, ERROR (temporarily DEBUG for troubleshooting)
+  log_level: "DEBUG"
   log_file: "data/logs/companion.log"
 
   performance:
-    main_loop_rate: 10  # Hz - Main control loop frequency
-    max_cpu_percent: 80  # Warning threshold
-    max_memory_mb: 2048  # Warning threshold
+    main_loop_rate: 10
+    max_cpu_percent: 80
+    max_memory_mb: 2048
 
   threading:
     camera_thread: true
@@ -403,15 +375,14 @@ system:
   startup:
     play_startup_sound: true
     show_startup_animation: true
-    camera_warmup_time: 2.0  # Seconds
+    camera_warmup_time: 2.0
 
   shutdown:
-    graceful_timeout: 5  # Seconds to wait for threads to stop
+    graceful_timeout: 5
 
-# Development & Testing
 development:
   debug_mode: false
-  mock_hardware: false  # Use simulated hardware for testing without Pi
+  mock_hardware: false
   show_fps: false
   show_sensor_values: false
   save_debug_images: false

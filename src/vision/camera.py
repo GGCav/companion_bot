@@ -1,6 +1,7 @@
 """
 Pi Camera v2 Handler
 Optimized camera capture for Raspberry Pi Camera Module v2
+Pending implementation
 """
 
 import cv2

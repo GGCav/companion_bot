@@ -1,6 +1,7 @@
 """
 Face Recognition for user identification
 Stores and recognizes known users
+Pending implementation
 """
 
 import cv2
