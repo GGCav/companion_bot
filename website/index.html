@@ -75,11 +75,10 @@
 
       <div style="text-align:center;">
               <h2>Introduction</h2>
-              <p style="text-align: left;padding: 0px 30px;">The goal is to build a small "pet companion robot" to provide emotional support and simple
-                interaction for users who may be under stress, lonely, or studying for a long time. Many people
-                want the comfort and personality of pets, but they cannot keep a real animal in their dormitory or
-                apartment. A low-maintenance robot that responds to the user's presence, voice, and touch can
-                partially fill this gap.
+              <p style="text-align: left;padding: 0px 30px;">The goal is to build a small "pet companion robot" to provide emotional support and friendly
+                interaction for users who may be under stress, lonely, or studying for a long time. It chats like a close buddy,responding your voice and touch in real time.
+                It also shows personality with dynamically generated pygame expressions. The robot keeps a friendly smile in IDLE mode and switches to animated mouth-and-eyes “speaking” expressions during conversation.
+                "Buddy" runs fully on a Raspberry Pi 4 with local LLM, STT, TTS, emotion state machine, memory, and display pipelines.
               </p>
       </div>
 
@@ -87,7 +86,7 @@
 
       <div class="row">
           <div class="col-md-4" style="text-align:center;">
-          <img class="img-rounded" src="pics/excited_speaking.png" alt="Generic placeholder image" width="300" height="240">
+          <img class="img-rounded" src="pics/idle smile.jpg" alt="Generic placeholder image" width="300" height="240">
           </div>
           <div class="col-md-8" style="font-size:18px;">
           <h2>Project Objective:</h2>
@@ -95,9 +94,9 @@
             <li>Robot using Raspberry PI, microphones, speakers, and touch 
                 screen to perceive the environment and perform expressive behaviors.</li>
             <li>Responding to voice commands: Using microphone to detect simple voice commands from user</li>
-            <li>Responding to touch: Using touch screen to detect user interaction</li> 
+            <li>Responding to touch: Using touch screen to detect user interaction and responding with different expressions</li> 
             <li>Showing off personality: Display different emotions when user talk with the robot.</li>
-          
+            <li>Run fully local: STT → LLM → TTS on-device, keeping latency low and privacy preserved.</li>
           </ul>
           </div>
       </div>
@@ -105,28 +104,59 @@
 
       <div style="text-align:center;">
               <h2>Design</h2>
-              <p style="text-align: left;padding: 0px 30px;">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum lorem nulla, consectetur at leo vel, pretium bibendum nisl. Cras blandit quam a enim ultrices, eu convallis enim posuere. Donec eleifend enim sed purus consectetur, vitae cursus lectus varius. Vivamus consectetur felis nec est venenatis posuere. Phasellus vitae aliquet erat. In laoreet lacinia mollis. Quisque iaculis nisl fermentum pharetra lobortis. Donec rhoncus dui sem, ac molestie leo tristique vel. Phasellus in nibh feugiat, fringilla lectus in, elementum magna. Etiam quis dui condimentum, tempus ex in, dapibus est. Cras ut congue augue. Donec ac enim ex. Ut id tristique risus, vel porttitor quam. Sed ultricies enim eu nibh porttitor, vel sodales enim feugiat. Fusce volutpat venenatis magna ac ultrices. Curabitur eget urna ut nulla mattis convallis non eu diam.</p>
+              <p style="text-align: left;padding: 0px 30px;">
+                In system architecture, Raspberry Pi 4 runs fully local pipeline: udio I/O → STT (faster‑whisper) → LLM (Ollama qwen2.5 0.5b) → TTS (Piper) → emotion engine → pygame display.
+                There are some multimodal interactions like microphone for voice commands, PiTFT touch screen for one tap, two taps, scrolls, and swipe. 
+                The robot also has up to 12 different pygame-generated expressions to show different emotions like happy, sad, excited, angry, and sleepy. For example, idle mode keeps smilling and speaking animateds mouth and eyes.
+                More details, in expression rendering, the procedural face shows up through pygame and fallback to sprite frames. We also have per-frame blending and transition controller to avoid pop-in.
+                For reliability and performance, we use WebRTC VAD + adaptive VAD to trim silence and stream STT/LLM/TTS with callbacks. The robot also has GPIO exit and watchdog in display loop.
+                For Memory and History, we use an SQLite-backed conversation log and user memory to maintain context continuity.
+              </p>
       </div>
 
     <hr id='drawings'>
 
       <div style="text-align:center;">
               <h2>Drawings</h2>
-              <p style="text-align: left;padding: 0px 30px;">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum lorem nulla, consectetur at leo vel, pretium bibendum nisl. Cras blandit quam a enim ultrices, eu convallis enim posuere. Donec eleifend enim sed purus consectetur, vitae cursus lectus varius. Vivamus consectetur felis nec est venenatis posuere. Phasellus vitae aliquet erat. In laoreet lacinia mollis. Quisque iaculis nisl fermentum pharetra lobortis. Donec rhoncus dui sem, ac molestie leo tristique vel. Phasellus in nibh feugiat, fringilla lectus in, elementum magna. Etiam quis dui condimentum, tempus ex in, dapibus est. Cras ut congue augue. Donec ac enim ex. Ut id tristique risus, vel porttitor quam. Sed ultricies enim eu nibh porttitor, vel sodales enim feugiat. Fusce volutpat venenatis magna ac ultrices. Curabitur eget urna ut nulla mattis convallis non eu diam.</p>
+              <img class="img-rounded" src="pics/Appearance.jpg" alt="Generic placeholder image" width="300" height="240">
+              <p style="text-align: left;padding: 0px 30px;">
+              The basic idea of the appearance to the robot was to create a cat-like figure that is friendly and inviting.
+              To better match the robot's voice personality, we made slight adjustments to the appearance and we also had a background story of "buddy":
+              On a dark and windy night, I was so lonely that I kept staring out of the window in a daze. At the same time, I saw a dark shadow flash by under the moon and come to my window.
+              I live on the 33rd floor. What kind of creature could climb to such a high floor? I had a feeling the person coming meant trouble.
+              Then I saw a pair of brown cat ears appear before my eyes, and it was wrapped in three layers of ninja headscarves on its head!
+              It calls itself "buddy" and came here from the west Coast in order to find its owner. So, "buddy" has been living with me until now and we have become very good friends.
+              </p>
       </div>
 
     <hr id='testing'>
 
       <div style="text-align:center;">
               <h2>Testing</h2>
-              <p style="text-align: left;padding: 0px 30px;">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum lorem nulla, consectetur at leo vel, pretium bibendum nisl. Cras blandit quam a enim ultrices, eu convallis enim posuere. Donec eleifend enim sed purus consectetur, vitae cursus lectus varius. Vivamus consectetur felis nec est venenatis posuere. Phasellus vitae aliquet erat. In laoreet lacinia mollis. Quisque iaculis nisl fermentum pharetra lobortis. Donec rhoncus dui sem, ac molestie leo tristique vel. Phasellus in nibh feugiat, fringilla lectus in, elementum magna. Etiam quis dui condimentum, tempus ex in, dapibus est. Cras ut congue augue. Donec ac enim ex. Ut id tristique risus, vel porttitor quam. Sed ultricies enim eu nibh porttitor, vel sodales enim feugiat. Fusce volutpat venenatis magna ac ultrices. Curabitur eget urna ut nulla mattis convallis non eu diam.</p>
+              <img class="img-rounded" src="pics/sad.jpg" alt="Generic placeholder image" width="300" height="240">
+              <p style="text-align: left;padding: 0px 30px;">
+              In the video, we tested the robot with several scenarios including voice command recognition, touch interaction, and emotional response.
+              For example, if we use our finger to tap the screen once, the robot will say "Hi there!"
+              If we tap the screen twice, the robot will respond "I love this!" 
+              If we press the screen with a long time, the robot will say "That feels nice."
+              If we drap the screen, the robot will say "Hehe, that tickles!"
+              If we scroll on the screen, the robot will say "Round and Round!"
+              In the speak mode, the robot will first show a smile face and when we speak, a blue box will appear at the edge of the robot.
+              This means the robot is listening. After we finish speaking, the robot will process our voice command and respond accordingly 
+              For instance, when we say "I feel sad today", the robot will show a sad face and say "oh no, can't image what makes you feel".
+            </p>
       </div>
 
     <hr id='result'>
 
       <div style="text-align:center;">
               <h2>Result</h2>
-              <p style="text-align: left;padding: 0px 30px;">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum lorem nulla, consectetur at leo vel, pretium bibendum nisl. Cras blandit quam a enim ultrices, eu convallis enim posuere. Donec eleifend enim sed purus consectetur, vitae cursus lectus varius. Vivamus consectetur felis nec est venenatis posuere. Phasellus vitae aliquet erat. In laoreet lacinia mollis. Quisque iaculis nisl fermentum pharetra lobortis. Donec rhoncus dui sem, ac molestie leo tristique vel. Phasellus in nibh feugiat, fringilla lectus in, elementum magna. Etiam quis dui condimentum, tempus ex in, dapibus est. Cras ut congue augue. Donec ac enim ex. Ut id tristique risus, vel porttitor quam. Sed ultricies enim eu nibh porttitor, vel sodales enim feugiat. Fusce volutpat venenatis magna ac ultrices. Curabitur eget urna ut nulla mattis convallis non eu diam.</p>
+              <p style="text-align: left;padding: 0px 30px;">
+              Overall, the project was a success. 
+              The companion robot was able to respond to voice commands and touch interactions in real time, providing a friendly and engaging experience for users.
+              In the future, we plan to install a camera to apply computer vision to track people movements like creating eye contract. 
+              We also want to toggle an advanced mode by using cloud api for better performance and memory storage.
+            </p>
       </div>
 
     <hr>
@@ -134,20 +164,22 @@
     <div class="row" style="text-align:center;">
           <h2>Work Distribution</h2>
           <div style="text-align:center;">
-              <img class="img-rounded" src="pics/group.jpg" alt="Generic placeholder image" style="width:80%;">
+              <img class="img-rounded" src="pics/Project Group .png" alt="Generic placeholder image" style="width:40%;">
               <h4>Project group picture</h4>
           </div>
           <div class="col-md-6" style="font-size:16px">
-              <img class="img-rounded" src="pics/a.png" alt="Generic placeholder image" width="240" height="240">
+              <img class="img-rounded" src="pics/happy.jpg" alt="Generic placeholder image" width="240" height="240">
               <h3>Jinfeng(Jeffery) He</h3>
-              <p class="lead">netid@cornell.edu</p>
+              <p class="lead">jh2933@cornell.edu</p>
               <p>Designed the overall software architecture (Just being himself).
           </div>
           <div class="col-md-6" style="font-size:16px">
-              <img class="img-rounded" src="pics/b.png" alt="Generic placeholder image" width="240" height="240">
+              <img class="img-rounded" src="pics/sleepy.jpg" alt="Generic placeholder image" width="240" height="240">
               <h3>Zhijie(Jack) Zhou</h3>
-              <p class="lead">netid@cornell.edu</p>
+              <p class="lead">zz953@cornell.edu</p>
               <p>Tested the overall system.
+              <p>Make the cardboard appearance</p>
+              <p>Code the early pygame prototype</p>
           </div>
       </div>
 
@@ -155,22 +187,19 @@
       <div style="font-size:18px">
           <h2>Parts List</h2>
           <ul>
-              <li>Raspberry Pi $35.00</li>
-              <li>Raspberry Pi Camera V2 $25.00</li>
+              <li>USB Microphone $2</li>
+              <li>Mini Breadboard $2</li>
               <a href="https://www.adafruit.com/product/1463"><li>NeoPixel Ring - $9.95</li></a>
-              <li>LEDs, Resistors and Wires - Provided in lab</li>
+              <li>LEDs, Resistors, Wires, Raspberry Pi, Tape, and Cardboard - Provided in lab</li>
           </ul>
-          <h3>Total: $69.95</h3>
+          <h3>Total: $?</h3>
       </div>
       <hr>
       <div style="font-size:18px">
           <h2>References</h2>
-          <a href="https://picamera.readthedocs.io/">PiCamera Document</a><br>
-          <a href="http://www.micropik.com/PDF/SG90Servo.pdf">Tower Pro Servo Datasheet</a><br>
-          <a href="http://getbootstrap.com/">Bootstrap</a><br>
-          <a href="http://abyz.co.uk/rpi/pigpio/">Pigpio Library</a><br>
-          <a href="https://sourceforge.net/p/raspberry-gpio-python/wiki/Home/">R-Pi GPIO Document</a><br>
-
+          <a href="https://canvas.cornell.edu/courses/79187/files/13726568?module_item_id=3382921">Lab2_Spring2025_v3.pdf</a><br>
+          <a href="https://pinout.xyz/pinout/pin12_gpio18/">Raspberry Pi Pinout</a><br>
+          <a href="https://www.hackster.io/mjrobot/running-large-language-models-on-raspberry-pi-at-the-edge-63bb11?utm_source=perplexity">Running Large Language Models on Raspberry Pi</a><br>
       </div>
 
     <hr>
