@@ -1,65 +1,48 @@
 # Companion Bot
-The goal of this project is to create a pet-companion robot that utilizes LLM-based artificial intelligence to continually produce character, while empowering emotional interaction via voice, touch, and visual channels. A Raspberry Pi 4 is the core controller running a personality engine that monitors several discrete emotional states (e.g., happy, curious, lonely, excited, sleepy) that adapt behaviors in reaction to user input and environmental context. Input modes include (1) a microphone to enable voice activation, (2) distributed touch sensors as input to detect petting, (3) a Pi Camera for facial recognition and object tracking, and (4) proximity sensors for spatial awareness. The robot has a TFT display that provides over 20 different animated eye expressions to reflect the internal state and servo motors for lifelike head, ear, and tail movements. The LLM functionality is provided through cloud APIs or on device models (Ollama). We also have a memory module that integrates user preferences, interaction history, and learned routines into our reasoning process to support long-term relationship modeling. The personality engine combines multimodal input, applies state-machine or dictionary-type logic to govern its output, visual, audio, and physical expressions, as integrated in a concurrent and coherent fashion. 
 
-```flow chart
-flowchart TD
-    User[User Interaction<br/>Voice, Touch, Vision]
-    Mic[Microphone Array]
-    Touch[Touch Sensors<br/>Head, Body, Back]
-    Camera[Pi Camera<br/>Face Detection]
-    STT[Speech-to-Text]
-    AICore[LLM Core<br/>GPT API or Local Ollama]
-    Personality[Personality Engine<br/>Emotion State Machine]
-    Memory[Memory System<br/>User Preferences & History]
-    TTS[Text-to-Speech<br/>Pet Voice]
-    Emotion[Emotion Display System]
-    TFT[TFT Display<br/>Animated Eyes & Expressions]
-    Motor[Servo Motors<br/>Head, Tail, Ears]
-    Speaker[Speaker Audio Output]
-    RobotBody[Lab 3 Robot Kit<br/>Body Movement]
-    Sensors[Environmental Sensors<br/>PIR, Proximity]
-    
-    User --> Mic
-    User --> Touch
-    User --> Camera
-    
-    Mic --> STT
-    Touch --> Personality
-    Camera --> Personality
-    Sensors -.-> Personality
-    
-    STT --> AICore
-    AICore --> Memory
-    Memory --> Personality
-    Personality --> AICore
-    
-    Personality --> Emotion
-    Personality --> TTS
-    
-    Emotion --> TFT
-    Emotion --> Motor
-    TTS --> Speaker
-    Motor --> RobotBody
-    
-    subgraph RPI["Raspberry Pi 4 - Central Controller"]
-        STT
-        AICore
-        Personality
-        Memory
-        TTS
-        Emotion
-    end
-    
-    subgraph Output["Multimodal Pet Responses"]
-        TFT
-        Motor
-        Speaker
-        RobotBody
-    end
-    
-    style RPI fill:#e1f5dd,stroke:#4caf50,stroke-width:3px
-    style Output fill:#fff3e0,stroke:#ff9800,stroke-width:2px
-    style User fill:#e3f2fd,stroke:#2196f3,stroke-width:2px
-    style Personality fill:#fce4ec,stroke:#e91e63,stroke-width:2px
+Companion Bot is a Raspberry Pi–based pet-style robot that talks, listens, reacts to touch, sees faces, and shows emotions on a small display. It runs a local pipeline (audio input → VAD → STT → LLM → TTS → display/sensors) with a memory system to keep context across interactions.
+
+## Features
+- Voice pipeline with WebRTC VAD, Whisper STT, and Ollama-backed LLM responses.
+- Text-to-speech output plus pygame-driven expressive face renderer.
+- Touch, proximity, and PIR sensors for physical interaction and awareness.
+- SQLite-backed memory for user profiles and conversation history.
+- Modular scripts for demos, hardware checks, and integration tests.
+
+## Hardware & Software
+- Raspberry Pi 4 recommended (audio card, mini mic, speaker, Pi Camera, touch sensors, ultrasonic/PIR sensors, optional servos).
+- Python 3.11+ with system deps for audio (portaudio), camera (libcamera/OpenCV), and TTS/STT backends.
+- Ollama installed with a small model (e.g., `llama3.2:3b`) for on-device LLM.
+
+## Quick Start
+```bash
+python3 -m venv venv
+source venv/bin/activate
+pip install --upgrade pip
+pip install -r requirements.txt
 ```
-! [Flow Chart](flow_chart.png)
+
+## Configuration
+Edit `config/settings.yaml` to match your hardware (audio device indexes, sample rates, camera settings, sensor pins, servo pins). Ensure `config/asound.conf` matches your audio card if using ALSA, and copy it to `/etc/asound.conf` when running on the Pi.
+
+## Running
+- Full integration demo: `python scripts/demo_full_integration.py`
+- Main entrypoint (service-style): `python main.py`
+- Quick voice-only tests: see `scripts/test_voice_input.py` or `scripts/test_voice_llm.py`
+- Expression display test: `scripts/test_emotion_display.py`
+
+## Tests
+Run a lightweight syntax check: `python -m compileall main.py src scripts`
+Add or run pytest-based checks if you extend test coverage.
+
+## Project Structure
+- `main.py` — launches the full bot pipeline.
+- `src/` — core modules for audio, llm, expression/display, sensors, vision, personality, and memory.
+- `scripts/` — demos and hardware validation scripts.
+- `config/` — runtime settings and audio config.
+- `website/` — static project page assets.
+- `flow_chart.png` — high-level system diagram.
+
+## Notes
+- Many scripts expect to run on a Pi with the listed peripherals; on other platforms, disable hardware-specific sections in `settings.yaml`.
+- Keep models lightweight for real-time performance on the Pi.
