@@ -1,0 +1,388 @@
+audio:
+  input:
+    device_index: 1
+    channels: 1
+    sample_rate: 44100
+    chunk_size: 4096
+    format: "int16"
+
+  output:
+    device_index: 0
+    sample_rate: 22050
+    buffer_size: 2048
+    channels: 1
+
+  processing:
+    noise_reduction: true
+    auto_gain: true
+    vad_aggressiveness: 2
+    silence_threshold: 150
+    silence_duration: 1.5
+
+  wake_word:
+    enabled: false
+    keyword: "hey buddy"
+    sensitivity: 0.5
+
+# Pending implementation
+vision:
+  camera:
+    resolution: [640, 480]
+    framerate: 30
+    rotation: 0
+    hflip: false
+    vflip: false
+    exposure_mode: "auto"
+    awb_mode: "auto"
+
+  processing:
+    face_detection: true
+    face_recognition: true
+    object_tracking: false
+    min_detection_confidence: 0.5
+    min_tracking_confidence: 0.5
+
+  face:
+    detection_interval: 0.1
+    recognition_threshold: 0.6
+    unknown_face_threshold: 3
+
+  performance:
+    use_threading: true
+    max_fps: 30
+    buffer_size: 2
+
+# Pending implementation
+sensors:
+  touch:
+    enabled: true
+    pins:
+      head: 17
+      body: 27
+      back: 22
+    debounce_time: 0.05
+    long_press_duration: 2.0
+
+  proximity:
+    enabled: true
+    type: "ultrasonic"
+    ultrasonic:
+      trigger_pin: 23
+      echo_pin: 24
+      max_distance: 200
+      detection_threshold: 50
+    pir:
+      pin: 25
+
+  polling_rate: 20
+
+motors:
+  servo:
+    enabled: true
+    controller: "pigpio"
+    frequency: 50
+
+    servos:
+      head_pan:
+        pin: 12
+        min_pulse: 500
+        max_pulse: 2500
+        min_angle: -90
+        max_angle: 90
+        neutral: 0
+
+      head_tilt:
+        pin: 13
+        min_pulse: 500
+        max_pulse: 2500
+        min_angle: -45
+        max_angle: 45
+        neutral: 0
+
+      ear_left:
+        pin: 18
+        min_pulse: 500
+        max_pulse: 2500
+        min_angle: 0
+        max_angle: 90
+        neutral: 45
+
+      ear_right:
+        pin: 19
+        min_pulse: 500
+        max_pulse: 2500
+        min_angle: 0
+        max_angle: 90
+        neutral: 45
+
+      tail:
+        pin: 26
+        min_pulse: 500
+        max_pulse: 2500
+        min_angle: -90
+        max_angle: 90
+        neutral: 0
+
+  movement:
+    enabled: true
+    left_motor_pins: [5, 6]
+    right_motor_pins: [16, 20]
+    speed_default: 50
+
+expression:
+  display:
+    enabled: true
+    framebuffer: "/dev/fb0"
+    resolution: [320, 240]
+    fps: 60
+    image_dir: "src/display"
+
+    procedural_face:
+      enabled: true
+      background: [0, 0, 0]
+      blink_interval: [3.0, 6.0]
+      blink_duration: 0.12
+      eye_jitter: 1.5
+      mouth_smooth: 8.0
+      transition_smooth: 6.0
+      speaking_smooth: 10.0
+      speaking_wave_hz: 6.0
+      speaking_rest_factor: 0.35
+      listening_pulse_speed: 1.5
+      listening_pulse_strength: 0.08
+      listening_glow_color: [0, 200, 255]
+      listening_glow_alpha: 0.35
+      listening_glow_thickness: 6
+
+    transitions:
+      enabled: true
+      default_duration: 0.5
+      algorithm: "linear"
+
+    speaking:
+      toggle_interval: 0.15
+
+    touch:
+      enabled: true
+      thresholds:
+        tap_distance: 25
+        double_tap_window: 0.35
+        long_press: 0.6
+        drag_distance: 60
+        circle_distance: 140
+        circle_return: 45
+        cooldown: 0.8
+        effect_cooldown: 0.4
+        effect_busy: 1.2
+      gesture_effects:
+        tap:
+          emotion: happy
+          speak: "Hi there!"
+        double_tap:
+          emotion: loving
+          speak: "I love this!"
+        long_press:
+          emotion: loving
+          speak: "That feels nice."
+        drag:
+          emotion: playful
+          speak: "Hehe, that tickles!"
+        scroll:
+          emotion: curious
+          speak: "Round and round!"
+
+    gpio:
+      enabled: true
+      exit_button_pin: 27
+      button_debounce: 0.1
+
+display:
+  enabled: true
+  type: "pygame"
+  resolution: [480, 320]
+  fullscreen: false
+  fps: 30
+
+  eyes:
+    animation_speed: 0.05
+    blink_interval: [3, 8]
+    idle_movement: true
+    idle_movement_interval: [2, 5]
+
+  colors:
+    background: [0, 0, 0]
+    eye_color: [100, 200, 255]
+    pupil_color: [0, 0, 0]
+
+personality:
+  default_state: "curious"
+
+  emotions:
+    - happy
+    - sad
+    - excited
+    - curious
+    - sleepy
+    - lonely
+    - playful
+    - scared
+    - angry
+    - loving
+    - bored
+    - surprised
+
+  traits:
+    energy_level: 0.7
+    sociability: 0.8
+    curiosity: 0.9
+    affection: 0.8
+    playfulness: 0.7
+
+  dynamics:
+    emotion_decay_rate: 0.01
+    loneliness_increase_rate: 0.005
+    energy_drain_rate: 0.003
+    touch_happiness_boost: 0.2
+    voice_interaction_boost: 0.3
+    face_recognition_boost: 0.15
+
+  circadian:
+    enabled: true
+    wake_hour: 7
+    sleep_hour: 22
+    energy_multiplier_awake: 1.0
+    energy_multiplier_sleepy: 0.3
+
+llm:
+  provider: "ollama"
+
+  ollama:
+    base_url: "http://localhost:11434"
+    model: "qwen2.5:0.5b"
+    timeout: 30
+
+  generation:
+    temperature: 0.8
+    max_tokens: 400
+    top_p: 0.9
+
+  streaming:
+    enabled: true
+    segment_timeout: 1.5
+    min_segment_length: 8
+
+  personality_prompt: |
+    You are Buddy, a cute affectionate pet companion robot who loves {user_name}.
+    You are playful, curious, and loving.
+
+    CRITICAL RULE: You MUST start EVERY response with [emotion] tag in this exact format: [emotion] your message
+
+    Valid emotions: happy, sad, excited, curious, sleepy, lonely, playful, scared, angry, loving, bored, surprised
+
+    Examples:
+    User: "Hello! How are you?"
+    Assistant: [happy] Hi {user_name}! I'm doing great! So happy to see you!
+
+    User: "I won a prize!"
+    Assistant: [excited] Wow! That's amazing! I'm so proud of you!
+
+    User: "I'm going out"
+    Assistant: [sad] Aww, will you be back soon? I'll miss you!
+
+    REMEMBER: Always start with [emotion] in brackets, then your message.
+
+  fallback_responses:
+    - "[happy] Woof! I'm here for you!"
+    - "[playful] Meow! Pet me!"
+    - "[happy] *happy noises*"
+    - "[loving] I love spending time with you!"
+    - "[curious] *curious head tilt*"
+
+speech:
+  stt:
+    provider: "faster-whisper"
+    language: "en"
+
+    whisper:
+      model_size: "base"
+      device: "cpu"
+
+    faster_whisper:
+      model_size: "tiny"
+      device: "cpu"
+      compute_type: "int8"
+
+    vosk:
+      model_path: "models/vosk-model-small-en-us-0.15"
+
+  tts:
+    provider: "piper"
+
+    piper:
+      binary_path: "/home/pi/piper/piper/piper"
+      model_path: "/home/pi/piper/en_US-patrick-medium.onnx"
+      length_scale: 1.0
+      temp_dir: "/tmp"
+      sample_rate: 22050
+
+    pyttsx3:
+      rate: 150
+      volume: 0.9
+      voice_id: 0
+      pitch: 1.5
+
+    gtts:
+      language: "en"
+      tld: "com"
+      slow: false
+
+memory:
+  enabled: true
+  database_path: "data/companion.db"
+
+  user_profiles:
+    max_users: 10
+    face_encoding_model: "hog"
+
+  conversation:
+    max_history: 50
+    context_window: 10
+
+  learning:
+    track_preferences: true
+    track_interactions: true
+    track_routines: true
+
+  cleanup:
+    auto_cleanup: true
+    max_age_days: 90
+
+system:
+  log_level: "DEBUG"
+  log_file: "data/logs/companion.log"
+
+  performance:
+    main_loop_rate: 10
+    max_cpu_percent: 80
+    max_memory_mb: 2048
+
+  threading:
+    camera_thread: true
+    audio_thread: true
+    sensor_thread: true
+    expression_thread: true
+
+  startup:
+    play_startup_sound: true
+    show_startup_animation: true
+    camera_warmup_time: 2.0
+
+  shutdown:
+    graceful_timeout: 5
+
+development:
+  debug_mode: false
+  mock_hardware: false
+  show_fps: false
+  show_sensor_values: false
+  save_debug_images: false

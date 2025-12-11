@@ -1,0 +1,80 @@
+# Companion Bot Requirements
+# Optimized for Raspberry Pi 4 with Mini Microphone and Pi Camera v2
+# Version constraints removed to avoid outdated version errors
+
+# Core Python
+python-dotenv
+
+# LLM Integration
+# ollama
+requests
+
+# Audio Processing - Mini Microphone Support
+pyaudio
+sounddevice
+numpy
+scipy
+webrtcvad  # Voice activity detection
+
+# Speech-to-Text (Choose one or multiple)
+openai-whisper  # Local Whisper model
+SpeechRecognition  # Google/other cloud STT
+vosk  # Lightweight offline STT
+
+# Text-to-Speech
+pyttsx3
+gTTS
+pygame  # For audio playback
+
+# Computer Vision - Pi Camera v2 Optimized
+opencv-python
+opencv-contrib-python
+picamera2  # Official Pi Camera library
+mediapipe  # Face detection & tracking
+Pillow
+imutils
+
+# GPIO & Hardware Control
+RPi.GPIO
+pigpio  # Advanced servo control
+adafruit-circuitpython-pca9685  # Servo driver
+adafruit-circuitpython-motorkit  # Motor control
+smbus2  # I2C communication
+
+# Display - TFT Screen
+# pygame already listed above
+# Pillow already listed above
+
+# Database & Storage
+SQLAlchemy
+aiosqlite
+
+# Utilities
+pyyaml
+python-dateutil
+pytz
+colorlog  # Better logging
+colorama  # Colored terminal output
+
+# Async & Threading
+asyncio
+aiohttp
+
+# System Monitoring
+psutil  # CPU/memory monitoring
+
+# Optional: Cloud APIs (uncomment if using)
+# openai  # OpenAI GPT API
+# anthropic  # Claude API
+# google-cloud-speech  # Google Cloud STT
+# azure-cognitiveservices-speech  # Azure Speech
+
+# Development & Testing
+pytest
+pytest-asyncio
+black
+flake8
+
+# Performance Optimization
+cython
+numba  # JIT compiler for faster processing
